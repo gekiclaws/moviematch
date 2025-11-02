@@ -6,7 +6,7 @@
 2. Install dependencies from the project root:
 
    ```bash
-   cd frontend
+   cd app
    npm install
    ```
 
