@@ -6,7 +6,7 @@
 2. Install dependencies from the project root:
 
    ```bash
-   cd frontend
+   cd app
    npm install
    ```
 
@@ -24,3 +24,23 @@
    - Or scan the QR code with the Expo Go app on a physical device.
 
 4. When you are done, stop the bundler with `Ctrl+C`.
+
+## Running tests
+
+1. From the project root, move into the Expo app workspace:
+
+   ```bash
+   cd app
+   ```
+
+2. Execute the Vitest test suite:
+
+   ```bash
+   npm run test
+   ```
+
+   To target a specific test file, pass a path to the underlying Vitest CLI. For example:
+
+   ```bash
+   npm run test -- --run src/services/firebase/sessionService.test.ts
+   ```
