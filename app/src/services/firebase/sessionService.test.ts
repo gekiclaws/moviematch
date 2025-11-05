@@ -51,6 +51,7 @@ const baseSession: Omit<Session, 'id'> = {
   favoriteTitles: ['title-1'],
   swipes: [],
   createdAt: 1234567890,
+  sessionStatus: 'awaiting',
 };
 
 describe('SessionService', () => {
@@ -87,6 +88,7 @@ describe('SessionService', () => {
     const storedSession: Omit<Session, 'id'> = {
       ...baseSession,
       genres: ['comedy'],
+      sessionStatus: 'in progress',
     };
     getDocMock.mockResolvedValueOnce({
       exists: () => true,

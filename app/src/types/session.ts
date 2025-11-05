@@ -1,5 +1,7 @@
 import { Swipe } from './swipe';
 
+export type SessionStatus = 'awaiting' | 'in progress' | 'complete';
+
 export interface Session {
   id: string;
   userIds: [string, string];
@@ -10,4 +12,5 @@ export interface Session {
   swipes: Swipe[];
   matchedTitles?: string[];
   createdAt: number;
+  sessionStatus: SessionStatus;
 }
