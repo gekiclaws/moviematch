@@ -131,9 +131,9 @@ describe('SessionService', () => {
   it('throws when updating the session with an invalid number of users', async () => {
     await expect(
       SessionService.update('session-123', {
-        userIds: ['user-1'],
+        userIds: ['user-1', 'user-2', 'user-3'],
       })
-    ).rejects.toThrow('Session must have exactly 2 users');
+    ).rejects.toThrow('Session must have 1 or 2 users');
 
     expect(updateDocMock).not.toHaveBeenCalled();
   });

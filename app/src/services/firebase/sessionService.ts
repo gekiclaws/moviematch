@@ -34,8 +34,8 @@ export const SessionService = {
   },
 
   async update(id: string, data: Partial<Omit<Session, 'id'>>): Promise<void> {
-    if (data.userIds && data.userIds.length !== 2) {
-      throw new Error('Session must have exactly 2 users');
+    if (data.userIds && (data.userIds.length < 1 || data.userIds.length > 2)) {
+      throw new Error('Session must have 1 or 2 users');
     }
 
     const ref = doc(db, 'sessions', id);
