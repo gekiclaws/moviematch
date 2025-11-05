@@ -48,7 +48,8 @@ export const SessionService = {
     const ref = doc(db, 'sessions', id);
     await deleteDoc(ref);
   },
-
+  
+  // Joining Business Logic
   async getHost(sessionId: string): Promise<string | null> {
     const session = await this.get(sessionId);
     if (!session) return null;
@@ -56,7 +57,6 @@ export const SessionService = {
     return session.userIds.length > 0 ? session.userIds[0] : null;
   },
 
-  // Joining Business Logic
   async joinSession(sessionId: string, userId: string): Promise<void> {
     const session = await this.get(sessionId);
     if (!session) throw new Error('Room does not exist');
