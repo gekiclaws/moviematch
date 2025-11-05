@@ -2,7 +2,7 @@ import { Swipe } from './swipe';
 
 export interface Session {
   id: string;
-  userIds: [string, string];
+  userIds: string[];
   movieType: Array<'movie' | 'show'>;
   genres: string[];
   streamingServices: string[];

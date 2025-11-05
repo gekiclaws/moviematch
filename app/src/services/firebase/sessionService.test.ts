@@ -44,7 +44,7 @@ vi.mock('./index', () => ({
 import { SessionService } from './sessionService';
 
 const baseSession: Omit<Session, 'id'> = {
-  userIds: ['user-1', 'user-2'] as [string, string],
+  userIds: ['user-1'],
   movieType: ['movie'],
   genres: ['action'],
   streamingServices: ['netflix'],
@@ -67,7 +67,7 @@ describe('SessionService', () => {
     updateDocMock.mockReset();
   });
 
-  it('creates a session when exactly two users are provided', async () => {
+  it('creates a session when at least one user is provided', async () => {
     addDocMock.mockResolvedValueOnce({ id: 'new-session-id' });
 
     const id = await SessionService.create(baseSession);
@@ -76,10 +76,17 @@ describe('SessionService', () => {
     expect(id).toBe('new-session-id');
   });
 
-  it('throws when creating a session without two users', async () => {
-    const invalidSession = { ...baseSession, userIds: ['only-one-user'] as unknown as [string, string] };
+  it('throws when creating a session without users', async () => {
+    const invalidSession = { ...baseSession, userIds: [] };
 
-    await expect(SessionService.create(invalidSession)).rejects.toThrow('Session must have exactly 2 users');
+    await expect(SessionService.create(invalidSession)).rejects.toThrow('Session must have 1 or 2 users');
+    expect(addDocMock).not.toHaveBeenCalled();
+  });
+
+  it('throws when creating a session with more than two users', async () => {
+    const invalidSession = { ...baseSession, userIds: ['user-1', 'user-2', 'user-3'] };
+
+    await expect(SessionService.create(invalidSession)).rejects.toThrow('Session must have 1 or 2 users');
     expect(addDocMock).not.toHaveBeenCalled();
   });
 
@@ -122,17 +129,17 @@ describe('SessionService', () => {
   it('throws when updating the session with an invalid number of users', async () => {
     await expect(
       SessionService.update('session-123', {
-        userIds: ['user-1'] as unknown as [string, string],
+        userIds: ['user-1'],
       })
     ).rejects.toThrow('Session must have exactly 2 users');
 
     expect(updateDocMock).not.toHaveBeenCalled();
   });
 
-  it('removes a session by id', async () => {
+  it('deletes a session by id', async () => {
     deleteDocMock.mockResolvedValueOnce(undefined);
 
-    await SessionService.remove('session-123');
+    await SessionService.delete('session-123');
 
     expect(docMock).toHaveBeenCalledWith(fakeDb, 'sessions', 'session-123');
     expect(deleteDocMock).toHaveBeenCalledWith({ path: 'sessions/session-123' });

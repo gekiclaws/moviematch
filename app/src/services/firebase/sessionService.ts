@@ -14,8 +14,8 @@ const collectionRef = collection(db, 'sessions');
 
 export const SessionService = {
   async create(data: Omit<Session, 'id'>): Promise<string> {
-    if (data.userIds.length !== 2) {
-      throw new Error('Session must have exactly 2 users');
+    if (data.userIds.length < 1 || data.userIds.length > 2) {
+      throw new Error('Session must have 1 or 2 users');
     }
 
     const docRef = await addDoc(collectionRef, data);
@@ -42,7 +42,7 @@ export const SessionService = {
     await updateDoc(ref, data);
   },
 
-  async remove(id: string): Promise<void> {
+  async delete(id: string): Promise<void> {
     const ref = doc(db, 'sessions', id);
     await deleteDoc(ref);
   },
