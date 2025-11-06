@@ -4,8 +4,10 @@ import { createStackNavigator } from '@react-navigation/stack';
 import type { RootStackParamList } from '../types/navigation';
 import { View, Text } from 'react-native';
 
-// Placeholders for screen components
-const HomeScreen = () => <View><Text>Home Screen Placeholder</Text></View>;
+// Import actual screen components
+import HomeScreen from '../screens/HomeScreen';
+
+// Placeholders for remaining screen components
 const LobbyWaitingScreen = () => <View><Text>Lobby Waiting Placeholder</Text></View>;
 const JoinRoomScreen = () => <View><Text>Join Room Placeholder</Text></View>;
 const SuccessfullyJoinedScreen = () => <View><Text>Successfully Joined Placeholder</Text></View>;
