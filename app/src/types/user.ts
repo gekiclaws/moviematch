@@ -7,6 +7,6 @@ export interface User {
     selectedPlatforms: string[]
     favoriteTitles: string[]
   }
-  joinedRooms: string[]
+  joinedRoom: string // Current joined room ID
   createdAt: number
 }
