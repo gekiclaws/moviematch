@@ -26,3 +26,28 @@ export interface SuccessfullyJoinedParams {
     hostUser?: User;
     isHost?: boolean;
 }
+
+
+// Screen-specific data types
+export interface RoomCreationResult {
+    sessionId: string;
+    session: Session;
+    hostUserId: string;
+}
+
+export interface RoomJoinResult {
+    sessionId: string;
+    session: Session;
+    userId: string;
+    hostUser: User;
+}
+
+export interface RoomStatusInfo {
+    status: SessionStatus;
+    currentUserCount: number;
+    maxUsers: number;
+    users: User[];
+    joinCode: string;
+    isFull: boolean;
+    canStartMatching: boolean;
+}
