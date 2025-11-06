@@ -51,3 +51,52 @@ export interface RoomStatusInfo {
     isFull: boolean;
     canStartMatching: boolean;
 }
+
+// Navigation helper types
+
+export interface BaseNavigationProps {
+    userId: string;
+    sessionId?: string;
+}
+
+// Error information for navigation error handling
+export interface NavigationError {
+    code: string;
+    message: string;
+    details?: string;
+    screen?: keyof RootStackParamList;
+}
+
+// Room/Session validation types
+export interface RoomCodeValidation {
+    isValid: boolean;
+    session?: Session;
+    error?: string;
+    isFull?: boolean;
+    hasStarted?: boolean;
+}
+
+// Navigation context for maintaining app state
+export interface NavigationContext {
+    currentUser?: User;
+    currentSession?: Session;
+    isHost?: boolean;
+    isLoading: boolean;
+    error?: NavigationError;
+}
+
+// Type guards for runtime validation
+export function hasSessionParams( params: any): params is { sessionId: string; userId: string } {
+    return (
+        typeof params === 'object' &&
+        typeof params.sessionId === 'string' &&
+        typeof params.userId === 'string'
+    );
+}
+
+export function isInRoomContext( context: NavigationContext): context is NavigationContext & { currentSession: Session } {
+    return !!context.currentSession;
+}
+
+export type ScreenName = keyof RootStackParamList;
+export type SessionScreenParams = LobbyWaitingParams | SuccessfullyJoinedParams;
