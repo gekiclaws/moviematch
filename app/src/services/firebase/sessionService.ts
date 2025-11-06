@@ -5,6 +5,8 @@ import {
   doc,
   getDoc,
   updateDoc,
+  onSnapshot,
+  Unsubscribe,
 } from 'firebase/firestore';
 
 import { db } from './index';
@@ -89,6 +91,113 @@ export const SessionService = {
 
     // Update session status to 'in progress'
     this.update(sessionId, { sessionStatus: 'in progress'});
+  },
+
+  // Real-time Listeners
+  /**
+   * Subscribe to real-time updates for a specific session
+   * @param sessionId - The session to listen to
+   * @param onUpdate - Callback function when session data changes
+   * @param onError - Callback function when listener encounters an error
+   * @returns Unsubscribe function to stop listening
+  */
+  subscribeToSession(
+    sessionId: string,
+    onUpdate: (session: Session | null) => void,
+    onError?: (error: Error) => void
+  ): Unsubscribe {
+    const ref = doc(db, 'sessions', sessionId);
+    
+    return onSnapshot(
+      ref,
+      (snapshot) => {
+        try {
+          if (snapshot.exists()) {
+            const session: Session = {
+              id: snapshot.id,
+              ...(snapshot.data() as Omit<Session, 'id'>)
+            };
+            onUpdate(session);
+          } else {
+            // Session was deleted
+            onUpdate(null);
+          }
+        } catch (error) {
+          console.error('Error processing session update:', error);
+          onError?.(error as Error);
+        }
+      },
+      (error) => {
+        console.error('Session listener error:', error);
+        onError?.(error);
+      }
+    );
+  },
+
+  /**
+   * Subscribe only to session status changes (more efficient for status monitoring)
+   * @param sessionId - The session to monitor
+   * @param onStatusChange - Callback when status changes
+   * @param onError - Error callback
+   * @returns Unsubscribe function
+   */
+  subscribeToSessionStatus(
+    sessionId: string,
+    onStatusChange: (status: Session['sessionStatus'] | null, userCount: number) => void,
+    onError?: (error: Error) => void
+  ): Unsubscribe {
+    const ref = doc(db, 'sessions', sessionId);
+    
+    return onSnapshot(
+      ref,
+      (snapshot) => {
+        try {
+          if (snapshot.exists()) {
+            const data = snapshot.data() as Omit<Session, 'id'>;
+            onStatusChange(data.sessionStatus, data.userIds.length);
+          } else {
+            onStatusChange(null, 0);
+          }
+        } catch (error) {
+          console.error('Error processing status update:', error);
+          onError?.(error as Error);
+        }
+      },
+      (error) => {
+        console.error('Status listener error:', error);
+        onError?.(error);
+      }
+    );
+  },
+
+  /**
+   * Helper to manage multiple listeners for a session
+   * Useful for screens that need multiple types of updates
+   */
+  createSessionListeners(sessionId: string) {
+    const listeners: Unsubscribe[] = [];
+    
+    return {
+      // Subscribe to full session updates
+      onSessionUpdate: (callback: (session: Session | null) => void, onError?: (error: Error) => void) => {
+        const unsubscribe = this.subscribeToSession(sessionId, callback, onError);
+        listeners.push(unsubscribe);
+        return unsubscribe;
+      },
+      
+      // Subscribe to status-only updates
+      onStatusUpdate: (callback: (status: Session['sessionStatus'] | null, userCount: number) => void, onError?: (error: Error) => void) => {
+        const unsubscribe = this.subscribeToSessionStatus(sessionId, callback, onError);
+        listeners.push(unsubscribe);
+        return unsubscribe;
+      },
+      
+      // Cleanup all listeners at once
+      cleanup: () => {
+        listeners.forEach(unsubscribe => unsubscribe());
+        listeners.length = 0; // Clear the array
+      }
+    };
   },
 
 
