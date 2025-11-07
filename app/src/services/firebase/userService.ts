@@ -4,6 +4,7 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  setDoc,
   updateDoc,
   query,
   where,
@@ -28,6 +29,17 @@ export const UserService = {
   async create(userData: Omit<User, 'id'>): Promise<string> {
     const docRef = await addDoc(collectionRef, userData);
     return docRef.id;
+  },
+
+  /**
+   * Create a new user with a specific ID
+   * @param userId - The ID to assign to the user
+   * @param userData - User data without ID
+   * @returns Promise<void>
+   */
+  async createWithId(userId: string, userData: Omit<User, 'id'>): Promise<void> {
+    const ref = doc(db, 'users', userId);
+    await setDoc(ref, userData);
   },
 
   /**
