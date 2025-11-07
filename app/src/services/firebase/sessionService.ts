@@ -72,6 +72,17 @@ export const SessionService = {
     await this.update(sessionId, { userIds: updateUserIds });
   },
 
+  async leaveSession(sessionId: string, userId: string): Promise<void> {
+    const session = await this.get(sessionId);
+    if (!session) throw new Error('Room does not exist');
+    
+    // Check if the user is in the session
+    if (!session.userIds.includes(userId)) throw new Error('User not in room');
+    // Remove user from session
+    const updateUserIds = session.userIds.filter(id => id !== userId);
+    await this.update(sessionId, { userIds: updateUserIds });
+  },
+
   async startMovieMatching(sessionId: string, userId: string): Promise<void> {
     const session = await this.get(sessionId);
     if (!session) {
