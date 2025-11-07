@@ -7,14 +7,17 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:api": "ts-node src/services/testApi.ts"
   },
   "dependencies": {
+    "dotenv": "^17.2.3",
     "expo": "~54.0.20",
     "expo-status-bar": "~3.0.8",
     "firebase": "^12.5.0",
     "react": "19.1.0",
-    "react-native": "0.81.5"
+    "react-native": "0.81.5",
+    "streaming-availability": "^4.4.0"
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
