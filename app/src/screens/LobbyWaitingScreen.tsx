@@ -16,6 +16,7 @@ import { SessionService } from '../services/firebase/sessionService';
 import { UserService } from '../services/firebase/userService';
 import type { Session } from '../types/session';
 import type { User } from '../types/user';
+import type { Unsubscribe } from 'firebase/firestore';
 
 // Import styles
 import { styles } from '../styles/LobbyWaitingStyles';
@@ -32,11 +33,30 @@ export default function LobbyWaitingScreen({ navigation, route }: Props) {
   const [isLoading, setIsLoading] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastUserCount, setLastUserCount] = useState(0);
+  
+  // Real-time listener references
+  const [unsubscribeFunctions] = useState<Unsubscribe[]>([]);
 
-  // Real-time updates (we'll implement this later)
+  // Real-time updates - listen for session and user changes
   useEffect(() => {
     loadSessionData();
+    setupRealTimeListeners();
+    
+    // Cleanup function to unsubscribe from listeners when component unmounts
+    return () => {
+      console.log('Cleaning up real-time listeners');
+      unsubscribeFunctions.forEach(unsubscribe => unsubscribe());
+      unsubscribeFunctions.length = 0;
+    };
   }, [sessionId]);
+
+  // Cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      unsubscribeFunctions.forEach(unsubscribe => unsubscribe());
+    };
+  }, []);
 
   /**
    * Load initial session and user data
@@ -65,6 +85,72 @@ export default function LobbyWaitingScreen({ navigation, route }: Props) {
       setError('Failed to load session data');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  /**
+   * Set up real-time listeners for session and user changes
+   */
+  const setupRealTimeListeners = () => {
+    try {
+      // Clean up any existing listeners
+      unsubscribeFunctions.forEach(unsubscribe => unsubscribe());
+      unsubscribeFunctions.length = 0;
+
+      console.log('Setting up real-time listeners for session:', sessionId);
+
+      // 1. Listen to session changes (user joins, status changes, etc.)
+      const sessionUnsubscribe = SessionService.subscribeToSession(
+        sessionId,
+        (updatedSession) => {
+          console.log('Session updated:', updatedSession);
+          if (updatedSession) {
+            setSession(updatedSession);
+            // Update users list when session userIds change
+            loadUsersFromSession(updatedSession);
+          } else {
+            setSession(null);
+            setUsers([]);
+          }
+        },
+        (error) => {
+          console.error('Session listener error:', error);
+          setError('Connection lost. Trying to reconnect...');
+        }
+      );
+      unsubscribeFunctions.push(sessionUnsubscribe);
+
+      // 2. Listen to users in this room for real-time user updates
+      const usersUnsubscribe = UserService.subscribeToRoomUsers(
+        sessionId,
+        (updatedUsers) => {
+          console.log('Users in room updated:', updatedUsers);
+          setUsers(updatedUsers);
+          setLastUserCount(updatedUsers.length);
+        },
+        (error) => {
+          console.error('Users listener error:', error);
+        }
+      );
+      unsubscribeFunctions.push(usersUnsubscribe);
+
+    } catch (error) {
+      console.error('Error setting up real-time listeners:', error);
+    }
+  };
+
+  /**
+   * Load users from session data (helper function)
+   */
+  const loadUsersFromSession = async (sessionData: Session) => {
+    try {
+      const sessionUsers = await Promise.all(
+        sessionData.userIds.map(id => UserService.get(id))
+      );
+      const validUsers = sessionUsers.filter((user): user is User => user !== null);
+      setUsers(validUsers);
+    } catch (error) {
+      console.error('Error loading users from session:', error);
     }
   };
 
@@ -150,14 +236,14 @@ export default function LobbyWaitingScreen({ navigation, route }: Props) {
     }
 
     if (userCount === 1) {
-      return 'Waiting for partner to join...';
+      return 'Waiting for partner to join... 📡 Live';
     }
 
     if (userCount === 2) {
-      return 'Ready to start! Both users connected.';
+      return 'Ready to start! Both users connected. 🟢 Live';
     }
 
-    return `${userCount}/${maxUsers} users connected`;
+    return `${userCount}/${maxUsers} users connected 📡 Live`;
   };
 
   /**
