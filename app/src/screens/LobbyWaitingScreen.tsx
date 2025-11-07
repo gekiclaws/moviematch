@@ -1,0 +1,330 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  SafeAreaView,
+  Alert,
+  ActivityIndicator,
+  Clipboard,
+} from 'react-native';
+import type { StackScreenProps } from '@react-navigation/stack';
+import type { RootStackParamList } from '../types/navigation';
+
+// Import services
+import { SessionService } from '../services/firebase/sessionService';
+import { UserService } from '../services/firebase/userService';
+import type { Session } from '../types/session';
+import type { User } from '../types/user';
+
+// Import styles
+import { styles } from '../styles/LobbyWaitingStyles';
+
+type Props = StackScreenProps<RootStackParamList, 'LobbyWaiting'>;
+
+export default function LobbyWaitingScreen({ navigation, route }: Props) {
+  const { sessionId, userId } = route.params;
+  // Note: This screen is exclusively for hosts who created the room
+  
+  // State management
+  const [session, setSession] = useState<Session | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isStarting, setIsStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Real-time updates (we'll implement this later)
+  useEffect(() => {
+    loadSessionData();
+  }, [sessionId]);
+
+  /**
+   * Load initial session and user data
+   */
+  const loadSessionData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Load session data
+      const sessionData = await SessionService.get(sessionId);
+      if (!sessionData) {
+        throw new Error('Session not found');
+      }
+      setSession(sessionData);
+
+      // Load users in session
+      const sessionUsers = await Promise.all(
+        sessionData.userIds.map(id => UserService.get(id))
+      );
+      const validUsers = sessionUsers.filter((user): user is User => user !== null);
+      setUsers(validUsers);
+
+    } catch (error) {
+      console.error('Error loading session data:', error);
+      setError('Failed to load session data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Copy room code to clipboard
+   */
+  const copyRoomCode = () => {
+    Clipboard.setString(sessionId);
+    Alert.alert('Copied!', 'Room code copied to clipboard');
+  };
+
+  /**
+   * Start the movie matching session
+   */
+  const handleStartMatching = async () => {
+    if (!session) return;
+
+    try {
+      setIsStarting(true);
+
+      // Start the session using SessionService
+      await SessionService.startMovieMatching(sessionId, userId);
+
+      Alert.alert(
+        'Session Started!',
+        'Movie matching has begun. Redirecting...',
+        [{ 
+          text: 'OK', 
+          onPress: () => {
+            // TODO: Navigate to movie matching screen when implemented
+            console.log('Navigate to movie matching screen');
+          }
+        }]
+      );
+
+    } catch (error) {
+      console.error('Error starting session:', error);
+      let errorMessage = 'Failed to start session';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('host')) {
+          errorMessage = 'Only the host can start the session';
+        } else if (error.message.includes('2 users')) {
+          errorMessage = 'Need exactly 2 users to start';
+        }
+      }
+
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  /**
+   * Handle canceling the session as host
+   */
+  const handleLeaveSession = () => {
+    Alert.alert(
+      'Cancel Session',
+      'Are you sure you want to cancel this session? This will end the room for all users.',
+      [
+        { text: 'Keep Session', style: 'cancel' },
+        {
+          text: 'Cancel Session',
+          style: 'destructive',
+          onPress: () => navigation.navigate('Home')
+        }
+      ]
+    );
+  };
+
+  /**
+   * Get status text based on current session state
+   */
+  const getStatusText = (): string => {
+    if (!session) return 'Loading...';
+    
+    const userCount = users.length;
+    const maxUsers = 2;
+
+    if (session.sessionStatus === 'in progress') {
+      return 'Session in progress';
+    }
+
+    if (userCount === 1) {
+      return 'Waiting for partner to join...';
+    }
+
+    if (userCount === 2) {
+      return 'Ready to start! Both users connected.';
+    }
+
+    return `${userCount}/${maxUsers} users connected`;
+  };
+
+  /**
+   * Check if start button should be enabled
+   */
+  const canStartSession = (): boolean => {
+    return !!(
+      session &&
+      users.length === 2 &&
+      session.sessionStatus === 'awaiting' &&
+      !isStarting
+    );
+  };
+
+  // Loading screen
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3498db" />
+          <Text style={styles.loadingText}>Loading session...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Error screen
+  if (error || !session) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>
+            {error || 'Session not found'}
+          </Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={loadSessionData}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.content}>
+
+        {/* Header Section */}
+        <View style={styles.headerContainer}>
+          <Text style={styles.headerText}>
+            🏠 Your Room
+          </Text>
+          <Text style={styles.descriptionText}>
+            Share the room code with your partner
+          </Text>
+        </View>
+
+        {/* Room Code Section */}
+        <View style={styles.roomCodeContainer}>
+          <Text style={styles.roomCodeLabel}>Room Code</Text>
+          <TouchableOpacity 
+            style={styles.roomCodeBox}
+            onPress={copyRoomCode}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.roomCodeText}>{sessionId}</Text>
+            <Text style={styles.copyHint}>📋 Tap to copy</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Status Section */}
+        <View style={styles.statusContainer}>
+          <Text style={styles.statusLabel}>Session Status</Text>
+          <View style={styles.statusBox}>
+            <View style={styles.statusIndicator}>
+              <View style={[
+                styles.statusDot,
+                users.length === 2 ? styles.statusDotReady : styles.statusDotWaiting
+              ]} />
+              <Text style={styles.statusText}>{getStatusText()}</Text>
+            </View>
+            
+            {/* User Count Display */}
+            <View style={styles.userCountContainer}>
+              <Text style={styles.userCountText}>
+                👥 {users.length}/2 users connected
+              </Text>
+              
+              {/* User List */}
+              <View style={styles.userList}>
+                {users.map((user, index) => (
+                  <View key={user.id} style={styles.userItem}>
+                    <Text style={styles.userName}>
+                      {user.name || `User ${user.id.substring(0, 6)}`}
+                      {user.id === userId && ' (You - Host)'}
+                      {user.id !== userId && user.id === session.userIds[0] && ' (Host)'}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={[
+              styles.startButton,
+              !canStartSession() && styles.disabledButton
+            ]}
+            onPress={handleStartMatching}
+            disabled={!canStartSession()}
+            activeOpacity={0.8}
+          >
+            {isStarting ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator color="#ffffff" size="small" />
+                <Text style={styles.startButtonText}>Starting...</Text>
+              </View>
+            ) : (
+              <>
+                <Text style={styles.startButtonText}>
+                  🎬 Start Movie Matching
+                </Text>
+                <Text style={styles.buttonSubtext}>
+                  {users.length < 2 
+                    ? 'Waiting for partner to join'
+                    : 'Begin the matching process'
+                  }
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.leaveButton}
+            onPress={handleLeaveSession}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.leaveButtonText}>
+              🚪 Cancel Session
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Instructions */}
+        {users.length < 2 && (
+          <View style={styles.instructionsContainer}>
+            <Text style={styles.instructionsTitle}>Next steps:</Text>
+            <Text style={styles.instructionText}>
+              1. Share the room code above with your partner
+            </Text>
+            <Text style={styles.instructionText}>
+              2. Wait for them to join using the code
+            </Text>
+            <Text style={styles.instructionText}>
+              3. Start matching when both users are connected
+            </Text>
+          </View>
+        )}
+
+      </View>
+    </SafeAreaView>
+  );
+}
+
+
