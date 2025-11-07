@@ -46,6 +46,7 @@ export default function JoinRoomScreen({ navigation }: Props) {
       }
 
       // Check if session exists
+      console.log(roomCode);
       const session = await SessionService.get(roomCode.trim());
       if (!session) {
         Alert.alert('Error', 'Room code not found. Please check and try again.');
@@ -110,8 +111,8 @@ export default function JoinRoomScreen({ navigation }: Props) {
    * Handle room code input changes
    */
   const handleRoomCodeChange = (text: string) => {
-    // Convert to uppercase and remove spaces for consistency
-    setRoomCode(text.toUpperCase().trim());
+    // Remove spaces but preserve original case
+    setRoomCode(text.replace(/\s+/g, ''));
   };
 
   return (
@@ -139,7 +140,7 @@ export default function JoinRoomScreen({ navigation }: Props) {
               onChangeText={handleRoomCodeChange}
               placeholder="Enter room code here..."
               placeholderTextColor="#95a5a6"
-              autoCapitalize="characters"
+              autoCapitalize="none"
               autoCorrect={false}
               maxLength={20}
               editable={!isLoading}
