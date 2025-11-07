@@ -16,6 +16,7 @@ import type { RootStackParamList } from '../types/navigation';
 // Import services
 import { SessionService } from '../services/firebase/sessionService';
 import { UserService } from '../services/firebase/userService';
+import { UserManager } from '../services/firebase/userManager';
 
 // Import styles
 import { styles } from '../styles/JoinRoomStyles';
@@ -36,8 +37,13 @@ export default function JoinRoomScreen({ navigation }: Props) {
     setIsLoading(true);
 
     try {
-      // TODO: Replace with actual user ID from your auth system
-      const tempUserId = 'user_' + Math.random().toString(36).substring(2, 10);
+      // Get current user from UserManager (already initialized in App.tsx)
+      const currentUserId = UserManager.getCurrentUserId();
+      if (!currentUserId) {
+        Alert.alert('Error', 'User session not initialized. Please restart the app.');
+        setIsLoading(false);
+        return;
+      }
 
       // Check if session exists
       const session = await SessionService.get(roomCode.trim());
@@ -61,11 +67,8 @@ export default function JoinRoomScreen({ navigation }: Props) {
         return;
       }
 
-      // Create user first (in a real app, this would come from authentication)
-      await UserService.initializeUser('Guest User');
-
-      // Join the session
-      await SessionService.joinSession(roomCode.trim(), tempUserId);
+      // Join the session with current user
+      await SessionService.joinSession(roomCode.trim(), currentUserId);
 
       // Get updated session data
       const updatedSession = await SessionService.get(roomCode.trim());
@@ -76,7 +79,7 @@ export default function JoinRoomScreen({ navigation }: Props) {
       // Navigate to SuccessfullyJoined screen
       navigation.navigate('SuccessfullyJoined', {
         sessionId: roomCode.trim(),
-        userId: tempUserId,
+        userId: currentUserId,
         session: updatedSession || undefined,
         hostUser: hostUser || undefined,
         isHost: false,

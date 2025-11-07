@@ -12,7 +12,7 @@ import type { RootStackParamList } from '../types/navigation';
 
 // Session & User Services
 import { SessionService } from '../services/firebase/sessionService';
-import { UserService } from '../services/firebase/userService';
+import { UserManager } from '../services/firebase/userManager';
 
 // Import styles
 import { styles } from '../styles/HomeScreenStyles';
@@ -22,8 +22,15 @@ type Props = StackScreenProps<RootStackParamList, 'Home'>;
 export default function HomeScreen({ navigation }: Props) {
     const handleCreateRoom = async () => {
         try {
-            const tempUserId = `user_${Math.random().toString(36).substring(2, 10)}`;
-            const sessionId = await SessionService.create(tempUserId, {
+            // Get current user from UserManager (already initialized in App.tsx)
+            const currentUserId = UserManager.getCurrentUserId();
+            if (!currentUserId) {
+                Alert.alert('Error', 'User session not initialized. Please restart the app.');
+                return;
+            }
+
+            // Create session with the persistent user ID
+            const sessionId = await SessionService.create(currentUserId, {
                 movieType: [],
                 genres: [],
                 streamingServices: [],
@@ -35,10 +42,9 @@ export default function HomeScreen({ navigation }: Props) {
 
             const session = await SessionService.get(sessionId);
 
-
             navigation.navigate('LobbyWaiting', {
                 sessionId,
-                userId: tempUserId,
+                userId: currentUserId,
                 isHost: true,
                 session: session || undefined,
             });
@@ -80,7 +86,7 @@ export default function HomeScreen({ navigation }: Props) {
                     {/* Create Room Button */}
                     <TouchableOpacity
                         style={[styles.button, styles.createButton]}
-                        // onPress={handleCreateRoom}
+                        onPress={handleCreateRoom}
                         activeOpacity={0.8}
                     >
                         <Text style={styles.createButtonText}>Create Room</Text>
