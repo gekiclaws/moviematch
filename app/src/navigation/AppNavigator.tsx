@@ -9,6 +9,7 @@ import HomeScreen from '../screens/HomeScreen';
 import JoinRoomScreen from '../screens/JoinRoomScreen';
 import LobbyWaitingScreen from '../screens/LobbyWaitingScreen';
 import { SuccessfullyJoinedScreen } from '../screens/SuccessfullyJoinedScreen';
+import MovieSwipeScreen from "../screens/MovieSwipeScreen";
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -68,6 +69,13 @@ export default function AppNavigator() {
                         headerBackTitle: 'Back to Home',
                         gestureEnabled: false
                     })}
+                />
+
+                { /* Movie Swip Screen */ }
+                <Stack.Screen 
+                    name="MovieSwipe" 
+                    component={MovieSwipeScreen}
+                    options={{ headerShown: false }}
                 />
             </Stack.Navigator>
         </NavigationContainer>

@@ -174,17 +174,10 @@ export default function LobbyWaitingScreen({ navigation, route }: Props) {
       // Start the session using SessionService
       await SessionService.startMovieMatching(sessionId, userId);
 
-      Alert.alert(
-        'Session Started!',
-        'Movie matching has begun. Redirecting...',
-        [{ 
-          text: 'OK', 
-          onPress: () => {
-            // TODO: Navigate to movie matching screen when implemented
-            console.log('Navigate to movie matching screen');
-          }
-        }]
-      );
+      navigation.navigate('MovieSwipe', {
+        sessionId: sessionId,
+        userId: userId,
+      });
 
     } catch (error) {
       console.error('Error starting session:', error);

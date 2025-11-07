@@ -9,6 +9,8 @@ export type RootStackParamList = {
   LobbyWaiting: LobbyWaitingParams;
   JoinRoom: undefined; // User can join a room without params
   SuccessfullyJoined: SuccessfullyJoinedParams;
+  MovieSwipe: MovieSwipeParams;
+
 };
 
 // Individual Screen Params Info
@@ -26,6 +28,12 @@ export interface SuccessfullyJoinedParams {
     session?: Session;
     hostUser?: User;
     isHost?: boolean;
+}
+
+export interface MovieSwipeParams {
+    sessionId: string;
+    userId: string;
+    session?: Session
 }
 
 

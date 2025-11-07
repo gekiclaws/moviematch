@@ -1,16 +1,17 @@
 import * as streamingAvailability from "streaming-availability";
-import { config } from "../../config/env";
 import type { Media, StreamingGroup } from "../../types/media";
+import { MOVIE_API_KEY } from '@env';
 
 
 // Initialize the API client
 const createClient = () => {
   return new streamingAvailability.Client(
     new streamingAvailability.Configuration({
-      apiKey: config.RAPID_API_KEY,
+      apiKey: MOVIE_API_KEY,
     })
   );
 };
+
 
 // Helper function to transform API response to our Media interface
 const transformShowToMedia = (show: any): Media => {
