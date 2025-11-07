@@ -81,9 +81,8 @@ export default function JoinRoomScreen({ navigation }: Props) {
       navigation.navigate('SuccessfullyJoined', {
         sessionId: roomCode.trim(),
         userId: currentUserId,
+        userName: `${currentUserId}`,
         session: updatedSession || undefined,
-        hostUser: hostUser || undefined,
-        isHost: false,
       });
 
     } catch (error) {

@@ -22,6 +22,7 @@ export interface LobbyWaitingParams {
 export interface SuccessfullyJoinedParams {
     sessionId: string;
     userId: string;
+    userName: string;
     session?: Session;
     hostUser?: User;
     isHost?: boolean;
