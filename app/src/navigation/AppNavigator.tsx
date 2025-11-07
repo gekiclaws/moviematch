@@ -6,10 +6,10 @@ import { View, Text } from 'react-native';
 
 // Import actual screen components
 import HomeScreen from '../screens/HomeScreen';
+import JoinRoomScreen from '../screens/JoinRoomScreen';
 
 // Placeholders for remaining screen components
 const LobbyWaitingScreen = () => <View><Text>Lobby Waiting Placeholder</Text></View>;
-const JoinRoomScreen = () => <View><Text>Join Room Placeholder</Text></View>;
 const SuccessfullyJoinedScreen = () => <View><Text>Successfully Joined Placeholder</Text></View>;
 
 const Stack = createStackNavigator<RootStackParamList>();
