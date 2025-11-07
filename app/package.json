@@ -7,9 +7,11 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:api": "ts-node src/services/testApi.ts"
   },
   "dependencies": {
+    "dotenv": "^17.2.3",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/native": "^7.1.19",
     "@react-navigation/stack": "^7.6.2",
