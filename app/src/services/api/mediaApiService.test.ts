@@ -1,5 +1,10 @@
 // src/services/api/mediaApiService.test.ts
+vi.mock('@env', () => ({
+  MOVIE_API_KEY: 'test-api-key',
+}));
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 
 // Mock the streaming-availability package
 const { mockGetShow, mockSearchByFilters, mockSearchByTitle, mockGetTopShows, mockGetGenres } = 
@@ -24,13 +29,6 @@ vi.mock('streaming-availability', () => ({
     },
   })),
   Configuration: vi.fn(),
-}));
-
-// Mock the config
-vi.mock('../../config/env', () => ({
-  config: {
-    RAPID_API_KEY: 'test-api-key',
-  },
 }));
 
 // Import after mocks
