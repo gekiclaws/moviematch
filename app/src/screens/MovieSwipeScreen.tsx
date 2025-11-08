@@ -1,4 +1,4 @@
-// src/screens/MovieSwipeScreen.tsx
+
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -10,7 +10,6 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { StackScreenProps } from '@react-navigation/stack';
 import { getMoviesByPreferences } from '../services/api/mediaApiService';
 import { SwipeService } from '../services/firebase/swipeService';
 import { UserService } from '../services/firebase/userService';
@@ -73,7 +72,7 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
       const fetchedMovies = await getMoviesByPreferences(
         userData.preferences,
         'us',
-        { minRating: 60, limit: 5, orderBy: 'popularity_1month' }
+        { minRating: 60, limit: 20, orderBy: 'popularity_1month' }
       );
 
       if (fetchedMovies.length === 0) {
@@ -100,7 +99,7 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
       const moreMovies = await getMoviesByPreferences(
         user.preferences,
         'us',
-        { minRating: 60, limit: 5, orderBy: 'popularity_1month' } // TODO change based on algorithm
+        { minRating: 60, limit: 10, orderBy: 'popularity_1month' }
       );
 
       setMovies((prev) => [...prev, ...moreMovies]);
@@ -118,12 +117,10 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
 
     try {
       // Save swipe to Firebase
-      // Note: Using movie title as titleId for now
-      // You might want to use IMDb ID or another unique identifier
       await SwipeService.addSwipeToSession(
         sessionId,
         userId,
-        movie.title, // Or use a proper movie ID if available
+        movie.title,
         'dislike'
       );
 
@@ -147,7 +144,7 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
       await SwipeService.addSwipeToSession(
         sessionId,
         userId,
-        movie.title, // Or use a proper movie ID
+        movie.title,
         'like'
       );
 
@@ -224,6 +221,8 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
     );
   }
 
+  const currentMovie = movies[currentIndex];
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -237,33 +236,15 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
         <View style={{ width: 60 }} />
       </View>
 
-      {/* Card Stack */}
+      {/* Single Card */}
       <View style={styles.cardContainer}>
-        {/* Show next 2 cards in stack */}
-        {movies.slice(currentIndex, currentIndex + 3).map((movie, index) => (
-          <View
-            key={`${movie.title}-${currentIndex + index}`}
-            style={[
-              styles.cardWrapper,
-              {
-                zIndex: 10 - index,
-                transform: [
-                  { scale: 1 - index * 0.05 },
-                  { translateY: index * 10 },
-                ],
-                opacity: index === 0 ? 1 : 0.5,
-              },
-            ]}
-          >
-            <MovieCard
-              movie={movie}
-              onSwipeLeft={handleDislike}
-              onSwipeRight={handleLike}
-              onPress={() => handleOpenDetails(movie)}
-              isTopCard={index === 0}
-            />
-          </View>
-        ))}
+        <MovieCard
+          movie={currentMovie}
+          onSwipeLeft={handleDislike}
+          onSwipeRight={handleLike}
+          onPress={() => handleOpenDetails(currentMovie)}
+          isTopCard={true}
+        />
       </View>
 
       {/* Action Buttons */}
@@ -296,9 +277,14 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#282323ff',
+    backgroundColor: '#000000ff',
   },
   header: {
+    position: 'absolute',  // Position on top of card
+    top: 50,  // Adjust for safe area
+    left: 0,
+    right: 0,
+    zIndex: 100,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -307,21 +293,21 @@ const styles = StyleSheet.create({
   },
   backButton: {
     fontSize: 16,
-    color: '#333',
+    color: '#ffffffff',
     width: 60,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: '#ffffffff',
   },
   cardContainer: {
+    color: '#333',
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  cardWrapper: {
-    position: 'absolute',
+    paddingTop: 80,
+    paddingBottom: 100
   },
   buttonsContainer: {
     flexDirection: 'row',
@@ -400,7 +386,7 @@ const styles = StyleSheet.create({
   },
   noMoreSubtext: {
     fontSize: 16,
-    color: '#615f5fff',
+    color: '#666',
     textAlign: 'center',
   },
 });

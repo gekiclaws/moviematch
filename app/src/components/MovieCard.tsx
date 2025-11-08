@@ -133,7 +133,7 @@ export default function MovieCard({
       <Image
         source={{ uri: movie.poster }}
         style={styles.poster}
-        resizeMode="contain"
+        resizeMode= "contain"
       />
 
       {/* Info Overlay */}
@@ -159,29 +159,18 @@ export default function MovieCard({
 
 const styles = StyleSheet.create({
   card: {
-    position: 'absolute',
-    width: SCREEN_WIDTH * 0.9,
-    height: SCREEN_HEIGHT * 0.75,
-    left: (SCREEN_WIDTH * 0.1) / 2, // center horizontally
-    top: (SCREEN_HEIGHT * 0.25) / 2, // center vertically
-    borderRadius: 20,
-    overflow: 'hidden',
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+    backgroundColor: '#000',
+    // Remove borderRadius and position: 'relative'
   },
   poster: {
     width: '100%',
     height: '100%',
-    left: (SCREEN_WIDTH * 0.1) / 2, // center horizontally
-    top: (SCREEN_HEIGHT * 0.25) / 2, // center vertically
   },
   likeOverlay: {
     position: 'absolute',
-    top: 50,
+    top: 100,  // Lower it down so it's below the back button
     left: 30,
     zIndex: 1000,
     borderWidth: 4,
@@ -197,7 +186,7 @@ const styles = StyleSheet.create({
   },
   dislikeOverlay: {
     position: 'absolute',
-    top: 50,
+    top: 100,  // Lower it down
     right: 30,
     zIndex: 1000,
     borderWidth: 4,
@@ -213,14 +202,14 @@ const styles = StyleSheet.create({
   },
   infoOverlay: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 60,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',  // More transparent (was 0.85)
     padding: 20,
   },
   infoContent: {
-    gap: 8,
+    gap: 10,
   },
   title: {
     color: '#fff',
@@ -240,5 +229,5 @@ const styles = StyleSheet.create({
     color: '#aaa',
     fontSize: 12,
     fontStyle: 'italic',
-  },
+  }
 });
