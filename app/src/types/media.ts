@@ -9,6 +9,7 @@ export interface StreamingGroup {
 }
 
 export interface Media {
+  id: string, // using the imdb id
   mediaType: string;
   title: string;
   overview: string;

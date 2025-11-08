@@ -203,7 +203,15 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
   }
 
   // No more movies
-  // TODO - Redirect user to recommednation screen based on swipes
+  /* ---------------------------TODO---------------------------------
+    Redirect user to recommednation screen based on swipes
+    User.swipes are updated every time a user swipes
+    You have a swipe interface and media interface
+    something easy could be to just recommend a movie that both users liked
+    you can fetch a single movie with getMovieById in ApiService 
+    
+  */
+  
   if (currentIndex >= movies.length) {
     return (
       <SafeAreaView style={styles.container}>

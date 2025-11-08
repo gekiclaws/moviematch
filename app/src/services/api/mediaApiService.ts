@@ -16,6 +16,7 @@ const createClient = () => {
 // Helper function to transform API response to our Media interface
 const transformShowToMedia = (show: any): Media => {
   return {
+    id: show.imdbId,
     mediaType: show.showType,
     title: show.title,
     overview: show.overview || '',
