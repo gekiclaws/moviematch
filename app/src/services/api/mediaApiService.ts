@@ -64,7 +64,11 @@ export const getMoviesByPreferences = async (
 ): Promise<Media[]> => {
   try {
     const client = createClient();
-    
+    console.log('=== API CALL DEBUG ===');
+    console.log('API Key exists:', !!MOVIE_API_KEY);
+    console.log('API Key length:', MOVIE_API_KEY?.length);
+    console.log('Country:', country);
+
     // Build the request parameters
     const params: any = {
       country: country,
@@ -115,6 +119,9 @@ export const getMoviesByPreferences = async (
     return movies;
   } catch (error: any) {
     console.error('Error fetching movies by preferences:', error);
+    console.error('=== FULL ERROR ===');
+    console.error('Error message:', error.message);
+    console.error('Error details:', error);
     throw new Error(`Failed to fetch movies: ${error.message}`);
   }
 };

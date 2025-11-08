@@ -83,6 +83,7 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
       setMovies(fetchedMovies);
     } catch (err: any) {
       console.error('Error loading movies:', err);
+      console.error('Full error object:', JSON.stringify(err, null, 2));
       setError(err.message || 'Failed to load movies');
     } finally {
       setLoading(false);
