@@ -10,6 +10,7 @@ export type RootStackParamList = {
   JoinRoom: undefined; // User can join a room without params
   SuccessfullyJoined: SuccessfullyJoinedParams;
   MovieSwipe: MovieSwipeParams;
+  GenreSelection: GenreSelectionParams;
 
 };
 
@@ -34,6 +35,10 @@ export interface MovieSwipeParams {
     sessionId: string;
     userId: string;
     session?: Session
+}
+
+export interface GenreSelectionParams {
+    userId: string;
 }
 
 

@@ -48,9 +48,9 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
 
   // Preload more movies when running low
   useEffect(() => {
-    if (movies.length - currentIndex <= 3 && movies.length > 0) {
-      loadMoreMovies();
-    }
+    // if (movies.length - currentIndex <= 3 && movies.length > 0) { // TODO Change based on algorithm
+    //   loadMoreMovies();
+    // }
   }, [currentIndex]);
 
   /**
@@ -72,7 +72,7 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
       const fetchedMovies = await getMoviesByPreferences(
         userData.preferences,
         'us',
-        { minRating: 60, limit: 20, orderBy: 'popularity_1month' }
+        { minRating: 70, limit: 10, orderBy: 'popularity_alltime' }
       );
 
       if (fetchedMovies.length === 0) {
@@ -100,7 +100,7 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
       const moreMovies = await getMoviesByPreferences(
         user.preferences,
         'us',
-        { minRating: 60, limit: 10, orderBy: 'popularity_1month' }
+        { minRating: 60, limit: 10, orderBy: 'popularity_alltime' }
       );
 
       setMovies((prev) => [...prev, ...moreMovies]);
@@ -203,6 +203,7 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
   }
 
   // No more movies
+  // TODO - Redirect user to recommednation screen based on swipes
   if (currentIndex >= movies.length) {
     return (
       <SafeAreaView style={styles.container}>
