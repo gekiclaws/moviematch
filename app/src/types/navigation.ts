@@ -11,6 +11,7 @@ export type RootStackParamList = {
   SuccessfullyJoined: SuccessfullyJoinedParams;
   MovieSwipe: MovieSwipeParams;
   GenreSelection: GenreSelectionParams;
+  PlatformSelection: PlatformSelectionParams;
 
 };
 
@@ -38,6 +39,10 @@ export interface MovieSwipeParams {
 }
 
 export interface GenreSelectionParams {
+    userId: string;
+}
+
+export interface PlatformSelectionParams {
     userId: string;
 }
 

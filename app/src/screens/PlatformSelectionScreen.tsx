@@ -1,4 +1,4 @@
-// src/screens/GenreSelectionScreen.tsx
+
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -10,11 +10,11 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getAvailableGenres } from '../services/api/mediaApiService';
-import type { Genre } from '../types/genre';
+import type { Platform } from '../types/platform';
 import SelectableCard from "../components/SelectableCard";
 import { UserService } from '../services/firebase/userService';
 import { UserManager } from '../services/firebase/userManager';
+import { STREAMING_PLATFORMS } from '../types/platform';
 
 type Props = {
   route: {
@@ -25,42 +25,30 @@ type Props = {
   navigation: any;
 };
 
-export default function GenreSelectionScreen({ route, navigation }: Props) {
-  const [genres, setGenres] = useState<Genre[]>([]);
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+export default function  PlatformSelectionScreen({ route, navigation }: Props) {
+  const [platforms, setPlatforms] = useState<Platform[]>([]);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadGenres();
-  }, []);
+    setPlatforms(STREAMING_PLATFORMS);
+    setLoading(false);
+}, []);
 
-  const loadGenres = async () => {
-    try {
-      setLoading(true);
-      const fetchedGenres = await getAvailableGenres();
-      setGenres(fetchedGenres);
-    } catch (err: any) {
-      console.error('Error loading genres:', err);
-      setError('Failed to load genres');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const toggleGenre = (genreId: string) => {
-    setSelectedGenres((prev) => {
-      if (prev.includes(genreId)) {
-        return prev.filter((id) => id !== genreId);
+  const togglePlatform = (platformId: string) => {
+    setSelectedPlatforms((prev) => {
+      if (prev.includes(platformId)) {
+        return prev.filter((id) => id !== platformId);
       } else {
-        return [...prev, genreId];
+        return [...prev, platformId];
       }
     });
   };
 
   const handleContinue = async () => {
-    if (selectedGenres.length === 0) {
-        Alert.alert('Select Genres', 'Please select at least one genre to continue');
+    if (selectedPlatforms.length === 0) {
+        Alert.alert('Select Platform', 'Please select at least one platform to continue');
         return;
     }
 
@@ -75,36 +63,36 @@ export default function GenreSelectionScreen({ route, navigation }: Props) {
       return;
     }
 
-    // Update user preferences with selected genres using the helper method
+    // Update user preferences with selected platforms using the helper method
     await UserService.updatePreferences(userId, {
-      selectedGenres: selectedGenres,
+      selectedPlatforms: selectedPlatforms,
     });
 
-    console.log('Genres saved successfully:', selectedGenres);
+    console.log('Platforms saved successfully:', selectedPlatforms);
 
     // Navigate to streaming services screen
-    navigation.navigate('PlatformSelection', {
+    navigation.navigate('FavMovieSelection', {
       userId: userId,
     });
 
   } catch (error: any) {
-    console.error('Error saving genres:', error);
-    Alert.alert('Error', 'Failed to save genres. Please try again.');
+    console.error('Error saving platforms:', error);
+    Alert.alert('Error', 'Failed to save platforms. Please try again.');
   } finally {
     setLoading(false);
   }
 };
 
-  const renderGenreCard = ({ item }: { item: Genre }) => {
-  const isSelected = selectedGenres.includes(item.id);
+  const renderPlatformCard = ({ item }: { item: Platform }) => {
+  const isSelected = selectedPlatforms.includes(item.id);
 
   return (
     <SelectableCard
       id={item.id}
       label={item.name}
-      emoji={getGenreEmoji(item.name)}
+      emoji={getPlatformEmoji(item.name)}
       isSelected={isSelected}
-      onPress={toggleGenre}
+      onPress={togglePlatform}
     />
   );
 };
@@ -114,7 +102,7 @@ export default function GenreSelectionScreen({ route, navigation }: Props) {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#F5C518" />
-          <Text style={styles.loadingText}>Loading genres...</Text>
+          <Text style={styles.loadingText}>Loading platforms...</Text>
         </View>
       </SafeAreaView>
     );
@@ -125,7 +113,7 @@ export default function GenreSelectionScreen({ route, navigation }: Props) {
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadGenres}>
+          <TouchableOpacity style={styles.retryButton}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -144,7 +132,7 @@ export default function GenreSelectionScreen({ route, navigation }: Props) {
 
       {/* Title */}
       <View style={styles.titleContainer}>
-        <Text style={styles.title}>What are your favorite genres?</Text>
+        <Text style={styles.title}>What streaming services do you have?</Text>
         <Text style={styles.subtitle}>Select one or more to continue</Text>
       </View>
 
@@ -152,10 +140,10 @@ export default function GenreSelectionScreen({ route, navigation }: Props) {
       <TouchableOpacity
         style={[
           styles.continueButton,
-          selectedGenres.length === 0 && styles.continueButtonDisabled,
+          selectedPlatforms.length === 0 && styles.continueButtonDisabled,
         ]}
         onPress={handleContinue}
-        disabled={selectedGenres.length === 0}
+        disabled={selectedPlatforms.length === 0}
       >
         <Text style={styles.continueButtonText}>Continue</Text>
       </TouchableOpacity>
@@ -163,10 +151,10 @@ export default function GenreSelectionScreen({ route, navigation }: Props) {
       {/* Divider */}
       <View style={styles.divider} />
 
-      {/* Genre Grid */}
+      {/* Platform Grid */}
       <FlatList
-        data={genres}
-        renderItem={renderGenreCard}
+        data={platforms}
+        renderItem={renderPlatformCard}
         keyExtractor={(item) => item.id}
         numColumns={2}
         contentContainerStyle={styles.genreGrid}
@@ -177,31 +165,21 @@ export default function GenreSelectionScreen({ route, navigation }: Props) {
   );
 }
 
-// Helper function to get emoji for each genre
-const getGenreEmoji = (genreName: string): string => {
+const getPlatformEmoji = (platformName: string): string => {
   const emojiMap: { [key: string]: string } = {
-    'Action': '🎬',
-    'Adventure': '🗺️',
-    'Animation': '🎨',
-    'Comedy': '😂',
-    'Crime': '🔫',
-    'Documentary': '📹',
-    'Drama': '🎭',
-    'Family': '👨‍👩‍👧‍👦',
-    'Fantasy': '🧙',
-    'History': '📜',
-    'Horror': '👻',
-    'Music': '🎵',
-    'Mystery': '🔍',
-    'Romance': '❤️',
-    'Sci-Fi': '🚀',
-    'Thriller': '😱',
-    'War': '⚔️',
-    'Western': '🤠',
+    'Netflix': '🎬',
+    'Prime Video': '📦',
+    'Disney+': '🏰',
+    'Max': '🎭',
+    'Hulu': '🟢',
+    'Apple TV+': '🍎',
+    'Paramount+': '⛰️',
+    'Peacock': '🦚',
   };
 
-  return emojiMap[genreName] || '🎬';
+  return emojiMap[platformName] || '📺';
 };
+
 
 const styles = StyleSheet.create({
   container: {
