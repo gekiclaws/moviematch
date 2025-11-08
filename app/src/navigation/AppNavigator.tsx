@@ -10,6 +10,7 @@ import JoinRoomScreen from '../screens/JoinRoomScreen';
 import LobbyWaitingScreen from '../screens/LobbyWaitingScreen';
 import { SuccessfullyJoinedScreen } from '../screens/SuccessfullyJoinedScreen';
 import MovieSwipeScreen from "../screens/MovieSwipeScreen";
+import GenreSelectionScreen from "../screens/GenreSelectionScreen";
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -17,7 +18,7 @@ export default function AppNavigator() {
     return (
         <NavigationContainer>
             <Stack.Navigator
-                initialRouteName="Home"
+                initialRouteName="GenreSelection"
                 screenOptions= {{
                     headerStyle: { backgroundColor: '#2c3e50' }, // Dark blue header
                     headerTintColor: '#ecf0f1',                 // Light text
@@ -25,6 +26,14 @@ export default function AppNavigator() {
                     cardStyle: { backgroundColor: '#ecf0f1' },  // Light background
                 }}
             >
+                {/* Genre Selection Screen (Onboarding #1)*/}
+                <Stack.Screen
+                    name="GenreSelection"
+                    component={ GenreSelectionScreen }
+                    options={{ headerShown: false }}
+        
+                />
+
                 {/* Home Screen */}
                 <Stack.Screen
                     name="Home"
