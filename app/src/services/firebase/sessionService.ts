@@ -59,6 +59,12 @@ export const SessionService = {
     return session.userIds.length > 0 ? session.userIds[0] : null;
   },
 
+  async getStatus(sessionId: string): Promise<Session['sessionStatus'] | null> {
+    const session = await this.get(sessionId);
+    if (!session) return null;
+    
+    return session.sessionStatus;
+  },
   async joinSession(sessionId: string, userId: string): Promise<void> {
     const session = await this.get(sessionId);
     if (!session) throw new Error('Room does not exist');

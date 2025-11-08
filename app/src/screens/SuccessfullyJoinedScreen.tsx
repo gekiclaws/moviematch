@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { SessionService } from '../services/firebase/sessionService';
@@ -15,6 +15,7 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
   // State management
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Real-time listener reference
@@ -56,15 +57,9 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
           if (updatedSession) {
             setSession(updatedSession);
             
-            // Navigate to game if session starts
+            // No automatic navigation - let user click button when ready
             if (updatedSession.sessionStatus === 'in progress') {
-              console.log('Session started! Navigating to game...');
-              // TODO: Navigate to game screen when implemented
-              Alert.alert(
-                'Session Started!', 
-                'The host has started the session. Game features coming soon!',
-                [{ text: 'OK' }]
-              );
+              console.log('Session started! Button now available to join matching...');
             }
           } else {
             // Session was deleted
@@ -103,6 +98,42 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
   };
 
   /**
+   * Navigate to movie matching screen
+   */
+  const navigateToMovieMatching = () => {
+    if (!session) return;
+    
+    navigation.navigate('MovieSwipe', {
+      sessionId: sessionId,
+      userId: userName, // Using userName as userId for consistency
+      session: session
+    });
+  };
+
+  /**
+   * Refresh session data manually
+   */
+  const refreshSession = async () => {
+    try {
+      setIsRefreshing(true);
+      setError(null);
+
+      const sessionData = await SessionService.get(sessionId);
+      if (!sessionData) {
+        throw new Error('Session not found');
+      }
+      
+      setSession(sessionData);
+      console.log('Session refreshed:', sessionData.sessionStatus);
+    } catch (error) {
+      console.error('Error refreshing session data:', error);
+      setError('Failed to refresh session data');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  /**
    * Get status display text based on session state
    */
   const getStatusText = () => {
@@ -114,7 +145,7 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
       case 'awaiting':
         return '⏳ Waiting for host to start';
       case 'in progress':
-        return '🎮 Session active';
+        return '🎮 Ready to start matching!';
       case 'complete':
         return '✅ Session completed';
       default:
@@ -174,16 +205,59 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
         <View style={styles.statusContainer}>
           <Text style={styles.statusLabel}>Status</Text>
           <Text style={styles.statusText}>{getStatusText()}</Text>
+          
+          {/* Refresh Button */}
+          <TouchableOpacity 
+            style={styles.refreshButton}
+            onPress={refreshSession}
+            disabled={isRefreshing}
+            activeOpacity={0.8}
+          >
+            {isRefreshing ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <Text style={{ fontSize: 14, color: '#ffffff' }}>🔄</Text>
+            )}
+            <Text style={styles.refreshButtonText}>
+              {isRefreshing ? 'Refreshing...' : 'Refresh Status'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Waiting Message */}
+        {/* Dynamic Message */}
         <View style={styles.messageContainer}>
-          <Text style={styles.messageTitle}>Please Wait</Text>
-          <Text style={styles.messageText}>
-            You have successfully joined the room! Please wait for the host to start the session. 
-            You will be notified automatically when the game begins.
-          </Text>
+          {session?.sessionStatus === 'in progress' ? (
+            <>
+              <Text style={styles.messageTitle}>Ready to Start!</Text>
+              <Text style={styles.messageText}>
+                The host has started the session! You can now join the movie matching by clicking the button below.
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.messageTitle}>Please Wait</Text>
+              <Text style={styles.messageText}>
+                You have successfully joined the room! Please wait for the host to start the session. 
+                You will be notified when the game begins.
+              </Text>
+            </>
+          )}
         </View>
+
+        {/* Go to Movie Matching Button - Only show when session is in progress */}
+        {session?.sessionStatus === 'in progress' && (
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity 
+              style={styles.goToMatchingButton}
+              onPress={navigateToMovieMatching}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.goToMatchingButtonText}>
+                🎬 Go to Movie Matching
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Connection Indicator */}
         <View style={styles.connectionIndicator}>
