@@ -124,7 +124,7 @@ export default function MovieCard({
           <Animated.View
             style={[styles.dislikeOverlay, { opacity: getDislikeOpacity() }]}
           >
-            <Text style={styles.dislikeText}>NOPE</Text>
+            <Text style={styles.dislikeText}>DISLIKE</Text>
           </Animated.View>
         </>
       )}
@@ -162,7 +162,6 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
     backgroundColor: '#000',
-    // Remove borderRadius and position: 'relative'
   },
   poster: {
     width: '100%',

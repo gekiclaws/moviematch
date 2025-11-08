@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: '#000000ff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: SCREEN_HEIGHT * 0.9,
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   },
   closeButtonText: {
     fontSize: 24,
-    color: '#333',
+    color: '#ffffffff',
   },
   scrollView: {
     paddingHorizontal: 20,
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#ffffffff',
     marginBottom: 8,
   },
   metaRow: {
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 16,
-    color: '#666',
+    color: '#ffffffff',
   },
   section: {
     marginBottom: 20,
@@ -209,12 +209,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: '#fbfbfbff',
     marginBottom: 8,
   },
   sectionText: {
     fontSize: 16,
-    color: '#666',
+    color: '#ffffffff',
     lineHeight: 24,
   },
   genreContainer: {
@@ -234,12 +234,12 @@ const styles = StyleSheet.create({
   },
   overview: {
     fontSize: 16,
-    color: '#666',
+    color: '#fdfdfdff',
     lineHeight: 24,
   },
   streamingText: {
     fontSize: 16,
-    color: '#666',
+    color: '#ffffffff',
     marginBottom: 4,
   },
 });
