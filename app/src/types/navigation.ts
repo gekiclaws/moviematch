@@ -12,6 +12,7 @@ export type RootStackParamList = {
   MovieSwipe: MovieSwipeParams;
   GenreSelection: GenreSelectionParams;
   PlatformSelection: PlatformSelectionParams;
+  FavoriteMediaSelection: FavoriteMediaSelectionParams;
 
 };
 
@@ -43,6 +44,10 @@ export interface GenreSelectionParams {
 }
 
 export interface PlatformSelectionParams {
+    userId: string;
+}
+
+export interface FavoriteMediaSelectionParams {
     userId: string;
 }
 

@@ -71,7 +71,7 @@ export default function  PlatformSelectionScreen({ route, navigation }: Props) {
     console.log('Platforms saved successfully:', selectedPlatforms);
 
     // Navigate to streaming services screen
-    navigation.navigate('FavMovieSelection', {
+    navigation.navigate('FavoriteMediaSelection', {
       userId: userId,
     });
 

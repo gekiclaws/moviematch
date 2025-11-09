@@ -76,15 +76,21 @@ export const getMoviesByPreferences = async (
       showType: 'movie', // Only fetch movies, not series
     };
 
+    /* TODO
+
+    Specific preferences work but the movies that MovieSwipeScreen fetches might be
+    too specific which may cause that no movies match 
+    Update the paramters of the screen file to ensure at least a few movies
+    */
     // Add catalogs (streaming services) - API parameter name
-    if (preferences.selectedPlatforms && preferences.selectedPlatforms.length > 0) {
-      params.catalogs = preferences.selectedPlatforms.join(',');
-    }
+    // if (preferences.selectedPlatforms && preferences.selectedPlatforms.length > 0) {
+    //   params.catalogs = preferences.selectedPlatforms; // Pass array directly
+    // }
 
     // Add genres - API parameter name
-    if (preferences.selectedGenres && preferences.selectedGenres.length > 0) {
-      params.genres = preferences.selectedGenres.join(',');
-    }
+    // if (preferences.selectedGenres && preferences.selectedGenres.length > 0) {
+    //   params.genres = preferences.selectedGenres; // Pass array directly
+    // }
 
     // Add optional filters
     if (options?.minRating) {
@@ -106,6 +112,7 @@ export const getMoviesByPreferences = async (
     if (options?.orderBy) {
       params.orderBy = options.orderBy;
     }
+
 
     const response = await client.showsApi.searchShowsByFilters(params);
 
