@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 export const SuccessfullyJoinedStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ecf0f1',
+    backgroundColor: '#000000ff',
   },
   
   loadingContainer: {
@@ -39,12 +39,12 @@ export const SuccessfullyJoinedStyles = StyleSheet.create({
   successTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#27ae60',
+    color: '#ffffffff',
     textAlign: 'center',
   },
   
   infoContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#6c230fff',
     borderRadius: 12,
     padding: 20,
     marginBottom: 20,
@@ -69,18 +69,18 @@ export const SuccessfullyJoinedStyles = StyleSheet.create({
   
   infoLabel: {
     fontSize: 16,
-    color: '#7f8c8d',
+    color: '#ffffffff',
     fontWeight: '500',
   },
   
   infoValue: {
     fontSize: 16,
-    color: '#2c3e50',
+    color: '#c9c9c9ff',
     fontWeight: '600',
   },
   
   statusContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#6c230fff',
     borderRadius: 12,
     padding: 20,
     marginBottom: 20,
@@ -96,14 +96,14 @@ export const SuccessfullyJoinedStyles = StyleSheet.create({
   
   statusLabel: {
     fontSize: 16,
-    color: '#7f8c8d',
+    color: '#ffffffff',
     fontWeight: '500',
     marginBottom: 8,
   },
   
   statusText: {
     fontSize: 18,
-    color: '#2c3e50',
+    color: '#fbfbfbff',
     fontWeight: '600',
   },
   

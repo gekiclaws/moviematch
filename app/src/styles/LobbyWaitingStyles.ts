@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#000000ff',
   },
   content: {
     flex: 1,
@@ -20,7 +20,7 @@ export const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#7f8c8d',
+    color: '#ffffffff',
   },
 
   // Error States
@@ -56,13 +56,13 @@ export const styles = StyleSheet.create({
   headerText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2c3e50',
+    color: '#ffffffff',
     marginBottom: 8,
     textAlign: 'center',
   },
   descriptionText: {
     fontSize: 16,
-    color: '#7f8c8d',
+    color: '#ffffffff',
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -74,12 +74,12 @@ export const styles = StyleSheet.create({
   roomCodeLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#34495e',
+    color: '#ffffffff',
     marginBottom: 8,
     textAlign: 'center',
   },
   roomCodeBox: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#6c230fff',
     borderRadius: 12,
     paddingVertical: 20,
     paddingHorizontal: 16,
@@ -90,32 +90,33 @@ export const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     borderWidth: 2,
-    borderColor: '#3498db',
+    borderColor: '#ffffffff',
   },
   roomCodeText: {
-    fontSize: 28,
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#2c3e50',
+    color: '#ffffffff',
     letterSpacing: 4,
     marginBottom: 8,
   },
   copyHint: {
     fontSize: 14,
-    color: '#7f8c8d',
+    color: '#c0c9c9ff',
   },
 
   // Status Section
   statusContainer: {
     marginBottom: 30,
+    
   },
   statusLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#34495e',
+    color: '#ffffffff',
     marginBottom: 12,
   },
   statusBox: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#6c230fff',
     borderRadius: 12,
     padding: 20,
     shadowColor: '#000',
@@ -123,6 +124,7 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
+    
   },
   statusIndicator: {
     flexDirection: 'row',
@@ -136,7 +138,7 @@ export const styles = StyleSheet.create({
     marginRight: 12,
   },
   statusDotWaiting: {
-    backgroundColor: '#f39c12',
+    backgroundColor: '#f3e412ff',
   },
   statusDotReady: {
     backgroundColor: '#2ecc71',
@@ -144,7 +146,7 @@ export const styles = StyleSheet.create({
   statusText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2c3e50',
+    color: '#ffffffff',
   },
 
   // User Count Section
@@ -155,7 +157,7 @@ export const styles = StyleSheet.create({
   },
   userCountText: {
     fontSize: 14,
-    color: '#7f8c8d',
+    color: '#ffffffff',
     marginBottom: 12,
   },
   userList: {
@@ -168,7 +170,7 @@ export const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 14,
-    color: '#34495e',
+    color: '#ffffffff',
   },
 
   // Button Section
@@ -177,7 +179,7 @@ export const styles = StyleSheet.create({
     marginBottom: 20,
   },
   startButton: {
-    backgroundColor: '#2ecc71',
+    backgroundColor: '#15ad55ff',
     borderRadius: 12,
     paddingVertical: 18,
     paddingHorizontal: 24,

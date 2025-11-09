@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 export const styles = StyleSheet.create({
  container: {
    flex: 1,
-   backgroundColor: '#f8f9fa',
+   backgroundColor: '#000000ff',
  },
  content: {
    flex: 1,
@@ -19,7 +19,7 @@ export const styles = StyleSheet.create({
  appTitle: {
    fontSize: 32,
    fontWeight: 'bold',
-   color: '#2c3e50',
+   color: '#ffffffff',
    marginBottom: 8,
  },
  subtitle: {
@@ -52,47 +52,43 @@ export const styles = StyleSheet.create({
 
  // Button Section
  buttonContainer: {
+   justifyContent: 'center',
+   alignItems: 'center',
    gap: 16,
    marginBottom: 40,
  },
  button: {
-   borderRadius: 12,
-   paddingVertical: 18,
-   paddingHorizontal: 24,
+   borderRadius: 30,
+   padding: 0,
+   justifyContent: 'center',
+   paddingVertical: 25,
+   width: '70%',
    alignItems: 'center',
-   shadowColor: '#000',
-   shadowOffset: {
-     width: 0,
-     height: 2,
-   },
-   shadowOpacity: 0.1,
-   shadowRadius: 4,
-   elevation: 3,
  },
   // Create Button Styling
  createButton: {
-   backgroundColor: '#3498db',
+   backgroundColor: '#F5C518',
  },
  createButtonText: {
    fontSize: 18,
-   fontWeight: '600',
-   color: '#ffffff',
+   fontWeight: 'bold',
+   color: '#000000ff',
    marginBottom: 4,
  },
   // Join Button Styling
  joinButton: {
-   backgroundColor: '#2ecc71',
+   backgroundColor: '#F5C518',
  },
  joinButtonText: {
    fontSize: 18,
-   fontWeight: '600',
-   color: '#ffffff',
+   color: '#000000ff',
+   fontWeight: 'bold',
    marginBottom: 4,
  },
   // Button Subtext
  buttonSubtext: {
    fontSize: 14,
-   color: '#ffffff',
+   color: '#030303ff',
    opacity: 0.9,
  },
 });

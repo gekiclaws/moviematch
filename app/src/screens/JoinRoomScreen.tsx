@@ -126,13 +126,13 @@ export default function JoinRoomScreen({ navigation }: Props) {
           <View style={styles.headerContainer}>
             <Text style={styles.headerText}> Join Room</Text>
             <Text style={styles.descriptionText}>
-              Enter the room code shared by your friend to join their session
+              Enter the room code shared by your partner to join their session
             </Text>
           </View>
 
           {/* Input Section */}
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Room Code</Text>
+            <Text style={styles.inputLabel}></Text>
             <TextInput
               style={styles.textInput}
               value={roomCode}
@@ -144,9 +144,7 @@ export default function JoinRoomScreen({ navigation }: Props) {
               maxLength={20}
               editable={!isLoading}
             />
-            <Text style={styles.inputHint}>
-              💡 Room codes are provided by the session host
-            </Text>
+            
           </View>
 
           {/* Action Button */}
@@ -168,7 +166,7 @@ export default function JoinRoomScreen({ navigation }: Props) {
               ) : (
                 <>
                   <Text style={styles.joinButtonText}> Enter Room</Text>
-                  <Text style={styles.buttonSubtext}>Join the matching session</Text>
+                  {/* <Text style={styles.buttonSubtext}>Join the matching session</Text> */}
                 </>
               )}
             </TouchableOpacity>

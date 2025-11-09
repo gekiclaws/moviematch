@@ -106,19 +106,19 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
    * Get status display text based on session state
    */
   const getStatusText = () => {
-    if (error) return `❌ ${error}`;
-    if (isLoading) return '🔄 Loading...';
-    if (!session) return '❓ Session not found';
+    if (error) return ` ${error}`;
+    if (isLoading) return ' Loading...';
+    if (!session) return ' Session not found';
     
     switch (session.sessionStatus) {
       case 'awaiting':
-        return '⏳ Waiting for host to start';
+        return ' Waiting for host to start';
       case 'in progress':
-        return '🎮 Session active';
+        return ' Session active';
       case 'complete':
-        return '✅ Session completed';
+        return ' Session completed';
       default:
-        return '📡 Connected';
+        return ' Connected';
     }
   };
 
@@ -148,7 +148,7 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
       <View style={styles.content}>
         {/* Success Header */}
         <View style={styles.successHeader}>
-          <Text style={styles.successIcon}>🎉</Text>
+          <Text style={styles.successIcon}></Text>
           <Text style={styles.successTitle}>Successfully Joined!</Text>
         </View>
 
@@ -177,18 +177,18 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
         </View>
 
         {/* Waiting Message */}
-        <View style={styles.messageContainer}>
+        {/* <View style={styles.messageContainer}>
           <Text style={styles.messageTitle}>Please Wait</Text>
           <Text style={styles.messageText}>
             You have successfully joined the room! Please wait for the host to start the session. 
             You will be notified automatically when the game begins.
           </Text>
-        </View>
+        </View> */}
 
         {/* Connection Indicator */}
         <View style={styles.connectionIndicator}>
           <Text style={styles.connectionText}>
-            {error ? '🔴 Connection Issues' : '🟢 Connected to Room'}
+            {error ? ' Connection Issues' : ' Connected to Room'}
           </Text>
         </View>
       </View>
