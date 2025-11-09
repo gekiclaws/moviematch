@@ -13,6 +13,7 @@ import MovieSwipeScreen from "../screens/MovieSwipeScreen";
 import GenreSelectionScreen from "../screens/GenreSelectionScreen";
 import PlatformSelectionScreen from "../screens/PlatformSelectionScreen";
 import FavoriteMediaSelectionScreen from "../screens/FavoriteMediaScreen";
+import SessionTypeSelectionScreen from "../screens/SessionTypeSelectionScreen"
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -94,6 +95,13 @@ export default function AppNavigator() {
                         headerBackTitle: 'Back to Home',
                         gestureEnabled: false
                     })}
+                />
+
+                { /* Session Type Selection Screen */ }
+                <Stack.Screen
+                    name="SessionTypeSelection"
+                    component={SessionTypeSelectionScreen}
+                    options={{headerShown: false}}
                 />
 
                 { /* Movie Swip Screen */ }

@@ -83,14 +83,14 @@ export const getMoviesByPreferences = async (
     Update the paramters of the screen file to ensure at least a few movies
     */
     // Add catalogs (streaming services) - API parameter name
-    // if (preferences.selectedPlatforms && preferences.selectedPlatforms.length > 0) {
-    //   params.catalogs = preferences.selectedPlatforms; // Pass array directly
-    // }
+    if (preferences.selectedPlatforms && preferences.selectedPlatforms.length > 0) {
+      params.catalogs = preferences.selectedPlatforms; // Pass array directly
+    }
 
     // Add genres - API parameter name
-    // if (preferences.selectedGenres && preferences.selectedGenres.length > 0) {
-    //   params.genres = preferences.selectedGenres; // Pass array directly
-    // }
+    if (preferences.selectedGenres && preferences.selectedGenres.length > 0) {
+      params.genres = preferences.selectedGenres; // Pass array directly
+    }
 
     // Add optional filters
     if (options?.minRating) {

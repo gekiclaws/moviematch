@@ -13,7 +13,7 @@ export type RootStackParamList = {
   GenreSelection: GenreSelectionParams;
   PlatformSelection: PlatformSelectionParams;
   FavoriteMediaSelection: FavoriteMediaSelectionParams;
-
+  SessionTypeSelection: SessionTypeSelectionParams;
 };
 
 // Individual Screen Params Info
@@ -34,6 +34,13 @@ export interface SuccessfullyJoinedParams {
 }
 
 export interface MovieSwipeParams {
+    sessionId: string;
+    userId: string;
+    sessionTypes?: ('movie' | 'show')[];
+    session?: Session
+}
+
+export interface SessionTypeSelectionParams {
     sessionId: string;
     userId: string;
     session?: Session

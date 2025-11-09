@@ -89,6 +89,7 @@ describe('MovieApi', () => {
     });
   });
 
+  // TODO (Test after editing recommendation algorithm)
   describe('getMoviesByPreferences', () => {
     it('fetches movies with user preferences', async () => {
       const apiResponse = {
