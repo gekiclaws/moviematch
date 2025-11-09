@@ -5,7 +5,7 @@ export interface User {
     selectedTypes: ('movie' | 'show')[]
     selectedGenres: string[]
     selectedPlatforms: string[]
-    favoriteTitles: string[]
+    favoriteMedia: string[]
   }
   joinedRoom: string // Current joined room ID
   createdAt: number

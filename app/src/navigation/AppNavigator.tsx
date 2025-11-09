@@ -11,6 +11,8 @@ import LobbyWaitingScreen from '../screens/LobbyWaitingScreen';
 import { SuccessfullyJoinedScreen } from '../screens/SuccessfullyJoinedScreen';
 import MovieSwipeScreen from "../screens/MovieSwipeScreen";
 import GenreSelectionScreen from "../screens/GenreSelectionScreen";
+import PlatformSelectionScreen from "../screens/PlatformSelectionScreen";
+import FavoriteMediaSelectionScreen from "../screens/FavoriteMediaScreen";
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -34,6 +36,20 @@ export default function AppNavigator() {
         
                 />
 
+                {/* Platform Selection Screen (Onboarding #2)*/}
+                <Stack.Screen
+                    name="PlatformSelection"
+                    component={ PlatformSelectionScreen }
+                    options={{ headerShown: false }}
+                />
+
+                {/* Favorite Media Selection Screen (Onboarding #3)*/}
+                <Stack.Screen
+                    name="FavoriteMediaSelection"
+                    component={ FavoriteMediaSelectionScreen }
+                    options={{headerShown: false }}
+                />
+                
                 {/* Home Screen */}
                 <Stack.Screen
                     name="Home"
