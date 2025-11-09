@@ -25,6 +25,7 @@ type Props = {
     params: {
       sessionId: string;
       userId: string;
+      sessionTypes?: ('movie' | 'show')[]; // Add this
     };
   };
   navigation: any;
@@ -68,11 +69,16 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
       }
       setUser(userData);
 
-      // Fetch movies based on user preferences
+      const typesToFetch = route.params.sessionTypes || userData.preferences.selectedTypes;
+
       const fetchedMovies = await getMoviesByPreferences(
-        userData.preferences,
+        {
+          selectedTypes: typesToFetch,
+          selectedGenres: [],
+          selectedPlatforms: [],
+        },
         'us',
-        { minRating: 70, limit: 10, orderBy: 'popularity_alltime' }
+        { limit: 10, orderBy: 'popularity_1year' }
       );
 
       if (fetchedMovies.length === 0) {
