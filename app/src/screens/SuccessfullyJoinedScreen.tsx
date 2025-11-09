@@ -239,6 +239,21 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
             {error ? ' Connection Issues' : ' Connected to Room'}
           </Text>
         </View>
+
+        {/* Go to Movie Matching Button - Only show when session is in progress */}
+        {session?.sessionStatus === 'in progress' && (
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity 
+              style={styles.goToMatchingButton}
+              onPress={navigateToMovieMatching}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.goToMatchingButtonText}>
+                🎬 Go to Movie Matching
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </View>
   );
