@@ -74,10 +74,7 @@ export default function HomeScreen({ navigation }: Props) {
                 {/* Main Header */}
                 <View style={styles.headerContainer}>
                     <Text style={styles.headerText}>
-                        Join or Create a Room to get Started
-                    </Text>
-                    <Text style={styles.descriptionText}>
-                        Match with your partner to discover your perfect movie or show
+                        
                     </Text>
                 </View>
 

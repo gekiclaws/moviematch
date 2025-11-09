@@ -137,19 +137,19 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
    * Get status display text based on session state
    */
   const getStatusText = () => {
-    if (error) return `❌ ${error}`;
-    if (isLoading) return '🔄 Loading...';
-    if (!session) return '❓ Session not found';
+    if (error) return ` ${error}`;
+    if (isLoading) return ' Loading...';
+    if (!session) return ' Session not found';
     
     switch (session.sessionStatus) {
       case 'awaiting':
-        return '⏳ Waiting for host to start';
+        return ' Waiting for host to start';
       case 'in progress':
-        return '🎮 Ready to start matching!';
+        return ' Session active';
       case 'complete':
-        return '✅ Session completed';
+        return ' Session completed';
       default:
-        return '📡 Connected';
+        return ' Connected';
     }
   };
 
@@ -179,7 +179,7 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
       <View style={styles.content}>
         {/* Success Header */}
         <View style={styles.successHeader}>
-          <Text style={styles.successIcon}>🎉</Text>
+          <Text style={styles.successIcon}></Text>
           <Text style={styles.successTitle}>Successfully Joined!</Text>
         </View>
 
@@ -224,45 +224,19 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
           </TouchableOpacity>
         </View>
 
-        {/* Dynamic Message */}
+        {/* Waiting Message */}
         <View style={styles.messageContainer}>
-          {session?.sessionStatus === 'in progress' ? (
-            <>
-              <Text style={styles.messageTitle}>Ready to Start!</Text>
-              <Text style={styles.messageText}>
-                The host has started the session! You can now join the movie matching by clicking the button below.
-              </Text>
-            </>
-          ) : (
-            <>
-              <Text style={styles.messageTitle}>Please Wait</Text>
-              <Text style={styles.messageText}>
-                You have successfully joined the room! Please wait for the host to start the session. 
-                You will be notified when the game begins.
-              </Text>
-            </>
-          )}
+          <Text style={styles.messageTitle}>Please Wait</Text>
+          <Text style={styles.messageText}>
+            You have successfully joined the room! Please wait for the host to start the session. 
+            You will be notified automatically when the game begins.
+          </Text>
         </View>
-
-        {/* Go to Movie Matching Button - Only show when session is in progress */}
-        {session?.sessionStatus === 'in progress' && (
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity 
-              style={styles.goToMatchingButton}
-              onPress={navigateToMovieMatching}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.goToMatchingButtonText}>
-                🎬 Go to Movie Matching
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
 
         {/* Connection Indicator */}
         <View style={styles.connectionIndicator}>
           <Text style={styles.connectionText}>
-            {error ? '🔴 Connection Issues' : '🟢 Connected to Room'}
+            {error ? ' Connection Issues' : ' Connected to Room'}
           </Text>
         </View>
       </View>

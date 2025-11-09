@@ -229,14 +229,14 @@ export default function LobbyWaitingScreen({ navigation, route }: Props) {
     }
 
     if (userCount === 1) {
-      return 'Waiting for partner to join... 📡 Live';
+      return 'Waiting for partner to join... ';
     }
 
     if (userCount === 2) {
-      return 'Ready to start! Both users connected. 🟢 Live';
+      return 'Ready to start!';
     }
 
-    return `${userCount}/${maxUsers} users connected 📡 Live`;
+    return `${userCount}/${maxUsers} users connected`;
   };
 
   /**
@@ -289,11 +289,9 @@ export default function LobbyWaitingScreen({ navigation, route }: Props) {
         {/* Header Section */}
         <View style={styles.headerContainer}>
           <Text style={styles.headerText}>
-            🏠 Your Room
+            Your Room
           </Text>
-          <Text style={styles.descriptionText}>
-            Share the room code with your partner
-          </Text>
+         
         </View>
 
         {/* Room Code Section */}
@@ -305,7 +303,7 @@ export default function LobbyWaitingScreen({ navigation, route }: Props) {
             activeOpacity={0.7}
           >
             <Text style={styles.roomCodeText}>{sessionId}</Text>
-            <Text style={styles.copyHint}>📋 Tap to copy</Text>
+            <Text style={styles.copyHint}> Tap to copy</Text>
           </TouchableOpacity>
         </View>
 
@@ -324,7 +322,7 @@ export default function LobbyWaitingScreen({ navigation, route }: Props) {
             {/* User Count Display */}
             <View style={styles.userCountContainer}>
               <Text style={styles.userCountText}>
-                👥 {users.length}/2 users connected
+                 {users.length}/2 users connected
               </Text>
               
               {/* User List */}
@@ -362,7 +360,7 @@ export default function LobbyWaitingScreen({ navigation, route }: Props) {
             ) : (
               <>
                 <Text style={styles.startButtonText}>
-                  🎬 Start Movie Matching
+                   Start Movie Matching
                 </Text>
                 <Text style={styles.buttonSubtext}>
                   {users.length < 2 
@@ -380,13 +378,13 @@ export default function LobbyWaitingScreen({ navigation, route }: Props) {
             activeOpacity={0.8}
           >
             <Text style={styles.leaveButtonText}>
-              🚪 Cancel Session
+               Cancel Session
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* Instructions */}
-        {users.length < 2 && (
+        {/* {users.length < 2 && (
           <View style={styles.instructionsContainer}>
             <Text style={styles.instructionsTitle}>Next steps:</Text>
             <Text style={styles.instructionText}>
@@ -399,7 +397,7 @@ export default function LobbyWaitingScreen({ navigation, route }: Props) {
               3. Start matching when both users are connected
             </Text>
           </View>
-        )}
+        )} */}
 
       </View>
     </SafeAreaView>

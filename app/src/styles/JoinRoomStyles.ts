@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#000000ff',
   },
   keyboardContainer: {
     flex: 1,
@@ -23,13 +23,13 @@ export const styles = StyleSheet.create({
   headerText: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#2c3e50',
+    color: '#fafafaff',
     marginBottom: 12,
     textAlign: 'center',
   },
   descriptionText: {
     fontSize: 16,
-    color: '#7f8c8d',
+    color: '#d7d7d7ff',
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -77,7 +77,7 @@ export const styles = StyleSheet.create({
     marginBottom: 30,
   },
   joinButton: {
-    backgroundColor: '#2ecc71',
+    backgroundColor: '#1a9c1cff',
     borderRadius: 12,
     paddingVertical: 18,
     paddingHorizontal: 24,
@@ -92,7 +92,7 @@ export const styles = StyleSheet.create({
     elevation: 3,
   },
   disabledButton: {
-    backgroundColor: '#bdc3c7',
+    backgroundColor: '#979797ff',
     shadowOpacity: 0,
     elevation: 0,
   },
@@ -122,7 +122,7 @@ export const styles = StyleSheet.create({
 
   // Instructions Section
   instructionsContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#F5C518',
     borderRadius: 12,
     padding: 20,
     shadowColor: '#000',
@@ -136,13 +136,13 @@ export const styles = StyleSheet.create({
   },
   instructionsTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#34495e',
+    fontWeight: 'bold',
+    color: '#000000ff',
     marginBottom: 12,
   },
   instructionText: {
     fontSize: 14,
-    color: '#7f8c8d',
+    color: '#000000ff',
     lineHeight: 20,
     marginBottom: 4,
   },

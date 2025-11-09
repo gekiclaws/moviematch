@@ -56,7 +56,6 @@ export default function AppNavigator() {
                     name="Home"
                     component={HomeScreen}
                     options={{ 
-                        title: 'Movie Match', 
                         headerLeft: () => null}} // No back button on home screen
 
                 />
