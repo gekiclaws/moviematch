@@ -50,6 +50,7 @@ const baseSession: Omit<Session, 'id'> = {
   streamingServices: ['netflix'],
   favoriteTitles: ['title-1'],
   swipes: [],
+  matchedTitles: [],
   createdAt: 1234567890,
   sessionStatus: 'awaiting',
   playerStatus: { 'user-1': 'awaiting' },
@@ -477,6 +478,32 @@ describe('SessionService', () => {
         userIds: ['host-user', 'guest-user'],
         playerStatus: { 'host-user': 'done', 'guest-user': 'awaiting' },
         sessionStatus: 'in progress' as const,
+        swipes: [
+          {
+            id: 'swipe-1',
+            userId: 'host-user',
+            mediaId: 'movie-1',
+            mediaTitle: 'Movie 1',
+            decision: 'like' as const,
+            createdAt: 1,
+          },
+          {
+            id: 'swipe-2',
+            userId: 'guest-user',
+            mediaId: 'movie-1',
+            mediaTitle: 'Movie 1',
+            decision: 'like' as const,
+            createdAt: 2,
+          },
+          {
+            id: 'swipe-3',
+            userId: 'guest-user',
+            mediaId: 'movie-2',
+            mediaTitle: 'Movie 2',
+            decision: 'dislike' as const,
+            createdAt: 3,
+          },
+        ],
       };
 
       getDocMock.mockResolvedValueOnce({
@@ -493,6 +520,12 @@ describe('SessionService', () => {
         {
           'playerStatus.guest-user': 'done',
           sessionStatus: 'complete',
+          matchedTitles: [
+            {
+              id: 'movie-1',
+              title: 'Movie 1',
+            },
+          ],
         }
       );
     });

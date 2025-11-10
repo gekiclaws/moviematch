@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getMoviesByPreferences } from '../services/api/mediaApiService';
 import { SwipeService } from '../services/firebase/swipeService';
+import { SessionService } from '../services/firebase/sessionService';
 import { UserService } from '../services/firebase/userService';
 import MovieCard from '../components/MovieCard';
 import MovieDetailsModal from '../components/MovieDetailsModal';
@@ -42,10 +43,36 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
   const [selectedMovie, setSelectedMovie] = useState<Media | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const hasMarkedFinishedRef = useRef(false);
+  const hasNavigatedRef = useRef(false);
 
   useEffect(() => {
     loadUserAndMovies();
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = SessionService.subscribeToSession(
+      sessionId,
+      (updatedSession) => {
+        if (
+          updatedSession?.sessionStatus === 'complete' &&
+          !hasNavigatedRef.current
+        ) {
+          hasNavigatedRef.current = true;
+          navigation.replace('RecommendationScreen', {
+            sessionId: updatedSession.id,
+          });
+        }
+      },
+      (error) => {
+        console.error('Error subscribing to session updates:', error);
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [navigation, sessionId]);
 
   // Preload more movies when running low
   useEffect(() => {
@@ -124,12 +151,7 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
 
     try {
       // Save swipe to Firebase
-      await SwipeService.addSwipeToSession(
-        sessionId,
-        userId,
-        movie.title,
-        'dislike'
-      );
+      await SwipeService.addSwipeToSession(sessionId, userId, movie, 'dislike');
 
       // Move to next movie
       setCurrentIndex((prev) => prev + 1);
@@ -148,12 +170,7 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
 
     try {
       // Save swipe to Firebase
-      await SwipeService.addSwipeToSession(
-        sessionId,
-        userId,
-        movie.title,
-        'like'
-      );
+      await SwipeService.addSwipeToSession(sessionId, userId, movie, 'like');
 
       // Move to next movie
       setCurrentIndex((prev) => prev + 1);
@@ -219,6 +236,13 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
   */
   
   if (currentIndex >= movies.length) {
+    if (!hasMarkedFinishedRef.current) {
+      hasMarkedFinishedRef.current = true;
+      SessionService.markPlayerFinished(sessionId, userId).catch((err) => {
+        console.error('Failed to mark player finished:', err);
+      });
+    }
+
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.noMoreContainer}>
