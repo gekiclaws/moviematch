@@ -52,6 +52,7 @@ const baseSession: Omit<Session, 'id'> = {
   swipes: [],
   createdAt: 1234567890,
   sessionStatus: 'awaiting',
+  playerStatus: { 'user-1': 'awaiting' },
 };
 
 describe('SessionService', () => {
@@ -87,6 +88,7 @@ describe('SessionService', () => {
       ...sessionData,
       userIds: ['host-user'],
       sessionStatus: 'awaiting',
+      playerStatus: { 'host-user': 'awaiting' },
     });
     expect(id).toBe('new-session-id');
   });
@@ -135,6 +137,7 @@ describe('SessionService', () => {
       ...baseSession,
       genres: ['comedy'],
       sessionStatus: 'in progress',
+      playerStatus: { 'user-1': 'awaiting' },
     };
     getDocMock.mockResolvedValueOnce({
       exists: () => true,
@@ -189,7 +192,11 @@ describe('SessionService', () => {
   // Tests for getHost method
   describe('getHost', () => {
     it('returns the first user as host when session exists', async () => {
-      const sessionWithUsers = { ...baseSession, userIds: ['host-user', 'guest-user'] };
+      const sessionWithUsers = {
+        ...baseSession,
+        userIds: ['host-user', 'guest-user'],
+        playerStatus: { 'host-user': 'awaiting', 'guest-user': 'awaiting' },
+      };
       getDocMock.mockResolvedValueOnce({
         exists: () => true,
         id: 'session-123',
@@ -212,7 +219,7 @@ describe('SessionService', () => {
     });
 
     it('returns null when session has no users', async () => {
-      const emptySession = { ...baseSession, userIds: [] };
+      const emptySession = { ...baseSession, userIds: [], playerStatus: {} };
       getDocMock.mockResolvedValueOnce({
         exists: () => true,
         id: 'session-123',
@@ -228,7 +235,11 @@ describe('SessionService', () => {
   // Tests for joinSession method
   describe('joinSession', () => {
     it('successfully adds user to session', async () => {
-      const singleUserSession = { ...baseSession, userIds: ['host-user'] };
+      const singleUserSession = {
+        ...baseSession,
+        userIds: ['host-user'],
+        playerStatus: { 'host-user': 'awaiting' },
+      };
       getDocMock.mockResolvedValueOnce({
         exists: () => true,
         id: 'session-123',
@@ -240,7 +251,10 @@ describe('SessionService', () => {
 
       expect(updateDocMock).toHaveBeenCalledWith(
         { path: 'sessions/session-123' },
-        { userIds: ['host-user', 'guest-user'] }
+        {
+          userIds: ['host-user', 'guest-user'],
+          playerStatus: { 'host-user': 'awaiting', 'guest-user': 'awaiting' },
+        }
       );
     });
 
@@ -256,7 +270,11 @@ describe('SessionService', () => {
     });
 
     it('throws error when user is already in room', async () => {
-      const sessionWithUser = { ...baseSession, userIds: ['host-user', 'existing-user'] };
+      const sessionWithUser = {
+        ...baseSession,
+        userIds: ['host-user', 'existing-user'],
+        playerStatus: { 'host-user': 'awaiting', 'existing-user': 'awaiting' },
+      };
       getDocMock.mockResolvedValueOnce({
         exists: () => true,
         id: 'session-123',
@@ -270,7 +288,11 @@ describe('SessionService', () => {
     });
 
     it('throws error when room is full', async () => {
-      const fullSession = { ...baseSession, userIds: ['host-user', 'guest-user'] };
+      const fullSession = {
+        ...baseSession,
+        userIds: ['host-user', 'guest-user'],
+        playerStatus: { 'host-user': 'awaiting', 'guest-user': 'awaiting' },
+      };
       getDocMock.mockResolvedValueOnce({
         exists: () => true,
         id: 'session-123',
@@ -284,10 +306,60 @@ describe('SessionService', () => {
     });
   });
 
+  describe('leaveSession', () => {
+    it('removes the user from session and updates playerStatus', async () => {
+      const sessionWithUsers = {
+        ...baseSession,
+        userIds: ['host-user', 'guest-user'],
+        playerStatus: { 'host-user': 'awaiting', 'guest-user': 'awaiting' },
+      };
+
+      getDocMock.mockResolvedValueOnce({
+        exists: () => true,
+        id: 'session-123',
+        data: () => sessionWithUsers,
+      });
+      updateDocMock.mockResolvedValueOnce(undefined);
+
+      await SessionService.leaveSession('session-123', 'guest-user');
+
+      expect(updateDocMock).toHaveBeenCalledWith(
+        { path: 'sessions/session-123' },
+        {
+          userIds: ['host-user'],
+          playerStatus: { 'host-user': 'awaiting' },
+        }
+      );
+    });
+
+    it('throws error when user not in session', async () => {
+      const sessionWithHostOnly = {
+        ...baseSession,
+        userIds: ['host-user'],
+        playerStatus: { 'host-user': 'awaiting' },
+      };
+
+      getDocMock.mockResolvedValueOnce({
+        exists: () => true,
+        id: 'session-123',
+        data: () => sessionWithHostOnly,
+      });
+
+      await expect(SessionService.leaveSession('session-123', 'missing-user'))
+        .rejects.toThrow('User not in room');
+
+      expect(updateDocMock).not.toHaveBeenCalled();
+    });
+  });
+
   // Tests for startMovieMatching method
   describe('startMovieMatching', () => {
     it('successfully starts session when host has 2 users', async () => {
-      const readySession = { ...baseSession, userIds: ['host-user', 'guest-user'] };
+      const readySession = {
+        ...baseSession,
+        userIds: ['host-user', 'guest-user'],
+        playerStatus: { 'host-user': 'awaiting', 'guest-user': 'awaiting' },
+      };
       // Mock for initial session get
       getDocMock.mockResolvedValueOnce({
         exists: () => true,
@@ -306,7 +378,10 @@ describe('SessionService', () => {
 
       expect(updateDocMock).toHaveBeenCalledWith(
         { path: 'sessions/session-123' },
-        { sessionStatus: 'in progress' }
+        {
+          sessionStatus: 'in progress',
+          playerStatus: { 'host-user': 'awaiting', 'guest-user': 'awaiting' },
+        }
       );
     });
 
@@ -322,7 +397,11 @@ describe('SessionService', () => {
     });
 
     it('throws error when non-host tries to start session', async () => {
-      const sessionWithUsers = { ...baseSession, userIds: ['host-user', 'guest-user'] };
+      const sessionWithUsers = {
+        ...baseSession,
+        userIds: ['host-user', 'guest-user'],
+        playerStatus: { 'host-user': 'awaiting', 'guest-user': 'awaiting' },
+      };
       // Mock for initial session get
       getDocMock.mockResolvedValueOnce({
         exists: () => true,
@@ -343,7 +422,11 @@ describe('SessionService', () => {
     });
 
     it('throws error when session has insufficient users', async () => {
-      const singleUserSession = { ...baseSession, userIds: ['host-user'] };
+      const singleUserSession = {
+        ...baseSession,
+        userIds: ['host-user'],
+        playerStatus: { 'host-user': 'awaiting' },
+      };
       // Mock for initial session get
       getDocMock.mockResolvedValueOnce({
         exists: () => true,
@@ -359,6 +442,76 @@ describe('SessionService', () => {
 
       await expect(SessionService.startMovieMatching('session-123', 'host-user'))
         .rejects.toThrow('Session must have exactly 2 users to start');
+
+      expect(updateDocMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('markPlayerFinished', () => {
+    it('marks the player as done without completing session if partner pending', async () => {
+      const session = {
+        ...baseSession,
+        userIds: ['host-user', 'guest-user'],
+        playerStatus: { 'host-user': 'awaiting', 'guest-user': 'awaiting' },
+        sessionStatus: 'in progress' as const,
+      };
+
+      getDocMock.mockResolvedValueOnce({
+        exists: () => true,
+        id: 'session-123',
+        data: () => session,
+      });
+      updateDocMock.mockResolvedValueOnce(undefined);
+
+      await SessionService.markPlayerFinished('session-123', 'host-user');
+
+      expect(updateDocMock).toHaveBeenCalledWith(
+        { path: 'sessions/session-123' },
+        { 'playerStatus.host-user': 'done' }
+      );
+    });
+
+    it('completes session when all players are done', async () => {
+      const session = {
+        ...baseSession,
+        userIds: ['host-user', 'guest-user'],
+        playerStatus: { 'host-user': 'done', 'guest-user': 'awaiting' },
+        sessionStatus: 'in progress' as const,
+      };
+
+      getDocMock.mockResolvedValueOnce({
+        exists: () => true,
+        id: 'session-123',
+        data: () => session,
+      });
+      updateDocMock.mockResolvedValueOnce(undefined);
+
+      await SessionService.markPlayerFinished('session-123', 'guest-user');
+
+      expect(updateDocMock).toHaveBeenCalledWith(
+        { path: 'sessions/session-123' },
+        {
+          'playerStatus.guest-user': 'done',
+          sessionStatus: 'complete',
+        }
+      );
+    });
+
+    it('throws if user is not part of session', async () => {
+      const session = {
+        ...baseSession,
+        userIds: ['host-user'],
+        playerStatus: { 'host-user': 'awaiting' },
+      };
+
+      getDocMock.mockResolvedValueOnce({
+        exists: () => true,
+        id: 'session-123',
+        data: () => session,
+      });
+
+      await expect(SessionService.markPlayerFinished('session-123', 'guest-user'))
+        .rejects.toThrow('User not part of this session');
 
       expect(updateDocMock).not.toHaveBeenCalled();
     });

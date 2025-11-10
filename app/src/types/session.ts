@@ -2,6 +2,8 @@ import { Swipe } from './swipe';
 
 export type SessionStatus = 'awaiting' | 'in progress' | 'complete';
 
+export type PlayerReadiness = 'awaiting' | 'done';
+
 export interface Session {
   id: string;
   userIds: string[];
@@ -13,4 +15,5 @@ export interface Session {
   matchedTitles?: string[];
   createdAt: number;
   sessionStatus: SessionStatus;
+  playerStatus: Record<string, PlayerReadiness>;
 }
