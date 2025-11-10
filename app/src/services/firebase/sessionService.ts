@@ -6,6 +6,7 @@ import {
   getDoc,
   updateDoc,
   onSnapshot,
+  runTransaction,
   Unsubscribe,
 } from 'firebase/firestore';
 
@@ -131,85 +132,101 @@ export const SessionService = {
   },
 
   async markPlayerFinished(sessionId: string, userId: string): Promise<void> {
-    const session = await this.get(sessionId);
-    if (!session) {
-      throw new Error('Session does not exist');
-    }
-
-    if (!session.userIds.includes(userId)) {
-      throw new Error('User not part of this session');
-    }
-
     const sessionRef = doc(db, 'sessions', sessionId);
-    const updatedPlayerStatus: Record<string, PlayerReadiness> = {
-      ...session.playerStatus,
-      [userId]: 'done',
-    };
 
-    const updates: Record<string, unknown> = {
-      [`playerStatus.${userId}`]: 'done',
-    };
+    await runTransaction(db, async (transaction) => {
+      const snapshot = await transaction.get(sessionRef);
 
-    const allPlayersDone = Object.values(updatedPlayerStatus).every((status) => status === 'done');
+      if (!snapshot.exists()) {
+        throw new Error('Session does not exist');
+      }
 
-    if (allPlayersDone) {
-      const swipes = Array.isArray(session.swipes) ? session.swipes : [];
-      const likeMap = new Map<string, Set<string>>();
+      const session = snapshot.data() as Omit<Session, 'id'> & {
+        playerStatus?: Record<string, PlayerReadiness>;
+      };
 
-      swipes.forEach((swipe) => {
-        if (swipe.decision !== 'like') {
-          return;
-        }
+      if (!Array.isArray(session.userIds) || !session.userIds.includes(userId)) {
+        throw new Error('User not part of this session');
+      }
 
-        if (!likeMap.has(swipe.userId)) {
-          likeMap.set(swipe.userId, new Set());
-        }
+      const existingPlayerStatus = session.playerStatus ?? (Object.fromEntries(
+        session.userIds.map((id) => [id, 'awaiting' as PlayerReadiness])
+      ) as Record<string, PlayerReadiness>);
 
-        likeMap.get(swipe.userId)!.add(swipe.mediaId);
-      });
+      if (existingPlayerStatus[userId] === 'done') {
+        return;
+      }
 
-      const intersection = session.userIds.reduce<Set<string> | null>((acc, user) => {
-        const userLikes = likeMap.get(user) ?? new Set<string>();
-        if (acc === null) {
-          return new Set(userLikes);
-        }
+      const updatedPlayerStatus: Record<string, PlayerReadiness> = {
+        ...existingPlayerStatus,
+        [userId]: 'done',
+      };
 
-        return new Set(Array.from(acc).filter((mediaId) => userLikes.has(mediaId)));
-      }, null);
+      const updates: Record<string, unknown> = {
+        [`playerStatus.${userId}`]: 'done',
+      };
 
-      const matchedIdsSet = intersection ?? new Set<string>();
+      const allPlayersDone = session.userIds.every((id) => updatedPlayerStatus[id] === 'done');
 
-      const orderedMatchedIds = swipes
-        .filter((swipe) => swipe.decision === 'like' && matchedIdsSet.has(swipe.mediaId))
-        .map((swipe) => swipe.mediaId)
-        .filter((mediaId, index, array) => array.indexOf(mediaId) === index);
+      if (allPlayersDone) {
+        const swipes = Array.isArray(session.swipes) ? session.swipes : [];
+        const likeMap = new Map<string, Set<string>>();
 
-      const matchedTitles: MatchedTitle[] = orderedMatchedIds.map((mediaId) => {
-        const swipeWithMeta = swipes.find(
-          (swipe) => swipe.mediaId === mediaId && swipe.decision === 'like'
-        );
+        swipes.forEach((swipe) => {
+          if (swipe.decision !== 'like') {
+            return;
+          }
 
-        const match: MatchedTitle = {
-          id: mediaId,
-          title: swipeWithMeta?.mediaTitle ?? mediaId,
-        };
+          if (!likeMap.has(swipe.userId)) {
+            likeMap.set(swipe.userId, new Set());
+          }
 
-        if (swipeWithMeta?.posterUrl) {
-          match.posterUrl = swipeWithMeta.posterUrl;
-        }
+          likeMap.get(swipe.userId)!.add(swipe.mediaId);
+        });
 
-        if (swipeWithMeta?.streamingServices && swipeWithMeta.streamingServices.length > 0) {
-          match.streamingServices = swipeWithMeta.streamingServices;
-        }
+        const intersection = session.userIds.reduce<Set<string> | null>((acc, user) => {
+          const userLikes = likeMap.get(user) ?? new Set<string>();
+          if (acc === null) {
+            return new Set(userLikes);
+          }
 
-        return match;
-      });
+          return new Set(Array.from(acc).filter((mediaId) => userLikes.has(mediaId)));
+        }, null);
 
-      updates.sessionStatus = 'complete';
-      updates.matchedTitles = matchedTitles;
-    }
+        const matchedIdsSet = intersection ?? new Set<string>();
 
-    await updateDoc(sessionRef, updates);
+        const orderedMatchedIds = swipes
+          .filter((swipe) => swipe.decision === 'like' && matchedIdsSet.has(swipe.mediaId))
+          .map((swipe) => swipe.mediaId)
+          .filter((mediaId, index, array) => array.indexOf(mediaId) === index);
+
+        const matchedTitles: MatchedTitle[] = orderedMatchedIds.map((mediaId) => {
+          const swipeWithMeta = swipes.find(
+            (swipe) => swipe.mediaId === mediaId && swipe.decision === 'like'
+          );
+
+          const match: MatchedTitle = {
+            id: mediaId,
+            title: swipeWithMeta?.mediaTitle ?? mediaId,
+          };
+
+          if (swipeWithMeta?.posterUrl) {
+            match.posterUrl = swipeWithMeta.posterUrl;
+          }
+
+          if (swipeWithMeta?.streamingServices && swipeWithMeta.streamingServices.length > 0) {
+            match.streamingServices = swipeWithMeta.streamingServices;
+          }
+
+          return match;
+        });
+
+        updates.sessionStatus = 'complete';
+        updates.matchedTitles = matchedTitles;
+      }
+
+      transaction.update(sessionRef, updates);
+    });
   },
 
   // Real-time Listeners
