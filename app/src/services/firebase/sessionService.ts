@@ -107,7 +107,7 @@ export const SessionService = {
     }
 
     // Update session status to 'in progress'
-    this.update(sessionId, { sessionStatus: 'in progress'});
+    await this.update(sessionId, { sessionStatus: 'in progress'});
   },
 
   // Real-time Listeners
