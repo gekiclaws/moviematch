@@ -6,20 +6,22 @@ import {
   getDoc,
   updateDoc,
   onSnapshot,
+  runTransaction,
   Unsubscribe,
 } from 'firebase/firestore';
 
 import { db } from './index';
-import type { Session } from '../../types/session';
+import type { MatchedTitle, PlayerReadiness, Session } from '../../types/session';
 
 const collectionRef = collection(db, 'sessions');
 
 export const SessionService = {
-  async create(hostId: string, sessionData: Omit<Session, 'id' | 'userIds'>): Promise<string> {
+  async create(hostId: string, sessionData: Omit<Session, 'id' | 'userIds' | 'playerStatus'>): Promise<string> {
     const data = {
       ...sessionData,
       userIds: [hostId],
       sessionStatus: 'awaiting' as const,
+      playerStatus: Object.fromEntries([[hostId, 'awaiting' as PlayerReadiness]]) as Record<string, PlayerReadiness>,
     }
 
     const docRef = await addDoc(collectionRef, data);
@@ -34,7 +36,15 @@ export const SessionService = {
       return null;
     }
 
-    return { id: snapshot.id, ...(snapshot.data() as Omit<Session, 'id'>) };
+    const data = snapshot.data() as Omit<Session, 'id'> & {
+      playerStatus?: Record<string, PlayerReadiness>;
+    };
+
+    const playerStatus = data.playerStatus ?? (Object.fromEntries(
+      data.userIds.map((id) => [id, 'awaiting' as PlayerReadiness])
+    ) as Record<string, PlayerReadiness>);
+
+    return { id: snapshot.id, ...data, playerStatus };
   },
 
   async update(id: string, data: Partial<Omit<Session, 'id'>>): Promise<void> {
@@ -75,18 +85,25 @@ export const SessionService = {
 
     // Update session with new user
     const updateUserIds = [...session.userIds, userId]; // Previous + new user
-    await this.update(sessionId, { userIds: updateUserIds });
+    const updatedPlayerStatus: Record<string, PlayerReadiness> = {
+      ...session.playerStatus,
+      [userId]: 'awaiting',
+    };
+
+    await this.update(sessionId, { userIds: updateUserIds, playerStatus: updatedPlayerStatus });
   },
 
   async leaveSession(sessionId: string, userId: string): Promise<void> {
     const session = await this.get(sessionId);
     if (!session) throw new Error('Room does not exist');
-    
+
     // Check if the user is in the session
     if (!session.userIds.includes(userId)) throw new Error('User not in room');
     // Remove user from session
     const updateUserIds = session.userIds.filter(id => id !== userId);
-    await this.update(sessionId, { userIds: updateUserIds });
+    const { [userId]: _removed, ...remainingPlayerStatus } = session.playerStatus;
+
+    await this.update(sessionId, { userIds: updateUserIds, playerStatus: remainingPlayerStatus });
   },
 
   async startMovieMatching(sessionId: string, userId: string): Promise<void> {
@@ -107,7 +124,109 @@ export const SessionService = {
     }
 
     // Update session status to 'in progress'
-    this.update(sessionId, { sessionStatus: 'in progress'});
+    const playerStatus = Object.fromEntries(
+      session.userIds.map((id) => [id, 'awaiting' as PlayerReadiness])
+    ) as Record<string, PlayerReadiness>;
+
+    await this.update(sessionId, { sessionStatus: 'in progress', playerStatus });
+  },
+
+  async markPlayerFinished(sessionId: string, userId: string): Promise<void> {
+    const sessionRef = doc(db, 'sessions', sessionId);
+
+    await runTransaction(db, async (transaction) => {
+      const snapshot = await transaction.get(sessionRef);
+
+      if (!snapshot.exists()) {
+        throw new Error('Session does not exist');
+      }
+
+      const session = snapshot.data() as Omit<Session, 'id'> & {
+        playerStatus?: Record<string, PlayerReadiness>;
+      };
+
+      if (!Array.isArray(session.userIds) || !session.userIds.includes(userId)) {
+        throw new Error('User not part of this session');
+      }
+
+      const existingPlayerStatus = session.playerStatus ?? (Object.fromEntries(
+        session.userIds.map((id) => [id, 'awaiting' as PlayerReadiness])
+      ) as Record<string, PlayerReadiness>);
+
+      if (existingPlayerStatus[userId] === 'done') {
+        return;
+      }
+
+      const updatedPlayerStatus: Record<string, PlayerReadiness> = {
+        ...existingPlayerStatus,
+        [userId]: 'done',
+      };
+
+      const updates: Record<string, unknown> = {
+        [`playerStatus.${userId}`]: 'done',
+      };
+
+      const allPlayersDone = session.userIds.every((id) => updatedPlayerStatus[id] === 'done');
+
+      if (allPlayersDone) {
+        const swipes = Array.isArray(session.swipes) ? session.swipes : [];
+        const likeMap = new Map<string, Set<string>>();
+
+        swipes.forEach((swipe) => {
+          if (swipe.decision !== 'like') {
+            return;
+          }
+
+          if (!likeMap.has(swipe.userId)) {
+            likeMap.set(swipe.userId, new Set());
+          }
+
+          likeMap.get(swipe.userId)!.add(swipe.mediaId);
+        });
+
+        const intersection = session.userIds.reduce<Set<string> | null>((acc, user) => {
+          const userLikes = likeMap.get(user) ?? new Set<string>();
+          if (acc === null) {
+            return new Set(userLikes);
+          }
+
+          return new Set(Array.from(acc).filter((mediaId) => userLikes.has(mediaId)));
+        }, null);
+
+        const matchedIdsSet = intersection ?? new Set<string>();
+
+        const orderedMatchedIds = swipes
+          .filter((swipe) => swipe.decision === 'like' && matchedIdsSet.has(swipe.mediaId))
+          .map((swipe) => swipe.mediaId)
+          .filter((mediaId, index, array) => array.indexOf(mediaId) === index);
+
+        const matchedTitles: MatchedTitle[] = orderedMatchedIds.map((mediaId) => {
+          const swipeWithMeta = swipes.find(
+            (swipe) => swipe.mediaId === mediaId && swipe.decision === 'like'
+          );
+
+          const match: MatchedTitle = {
+            id: mediaId,
+            title: swipeWithMeta?.mediaTitle ?? mediaId,
+          };
+
+          if (swipeWithMeta?.posterUrl) {
+            match.posterUrl = swipeWithMeta.posterUrl;
+          }
+
+          if (swipeWithMeta?.streamingServices && swipeWithMeta.streamingServices.length > 0) {
+            match.streamingServices = swipeWithMeta.streamingServices;
+          }
+
+          return match;
+        });
+
+        updates.sessionStatus = 'complete';
+        updates.matchedTitles = matchedTitles;
+      }
+
+      transaction.update(sessionRef, updates);
+    });
   },
 
   // Real-time Listeners
@@ -130,9 +249,17 @@ export const SessionService = {
       (snapshot) => {
         try {
           if (snapshot.exists()) {
+            const data = snapshot.data() as Omit<Session, 'id'> & {
+              playerStatus?: Record<string, PlayerReadiness>;
+            };
+            const playerStatus = data.playerStatus ?? (Object.fromEntries(
+              data.userIds.map((id) => [id, 'awaiting' as PlayerReadiness])
+            ) as Record<string, PlayerReadiness>);
+
             const session: Session = {
               id: snapshot.id,
-              ...(snapshot.data() as Omit<Session, 'id'>)
+              ...data,
+              playerStatus,
             };
             onUpdate(session);
           } else {

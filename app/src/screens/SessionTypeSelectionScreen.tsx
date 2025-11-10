@@ -8,6 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { SessionService } from '../services/firebase/sessionService';
 
 type Props = {
   route: {
@@ -22,6 +23,7 @@ type Props = {
 export default function SessionTypeSelectionScreen({ route, navigation }: Props) {
   const { sessionId, userId } = route.params;
   const [selectedTypes, setSelectedTypes] = useState<('movie' | 'show')[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   const toggleType = (type: 'movie' | 'show') => {
     setSelectedTypes((prev) => {
@@ -33,18 +35,31 @@ export default function SessionTypeSelectionScreen({ route, navigation }: Props)
     });
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (selectedTypes.length === 0) {
       Alert.alert('Select Type', 'Please select at least Movies or Shows');
       return;
     }
 
-    // Navigate to movie swipe screen with selected types
-    navigation.navigate('MovieSwipe', {
-      sessionId: sessionId,
-      userId: userId,
-      sessionTypes: selectedTypes, // Pass the selected types
-    });
+    try {
+      setIsSaving(true);
+      await SessionService.update(sessionId, { movieType: selectedTypes });
+
+      // Navigate to movie swipe screen with selected types
+      navigation.navigate('MovieSwipe', {
+        sessionId: sessionId,
+        userId: userId,
+        sessionTypes: selectedTypes, // Pass the selected types
+      });
+    } catch (error) {
+      console.error('Failed to persist session type selection', error);
+      Alert.alert(
+        'Failed to continue',
+        'Unable to save your selection. Please check your connection and try again.'
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -93,12 +108,14 @@ export default function SessionTypeSelectionScreen({ route, navigation }: Props)
       <TouchableOpacity
         style={[
           styles.continueButton,
-          selectedTypes.length === 0 && styles.continueButtonDisabled,
+          (selectedTypes.length === 0 || isSaving) && styles.continueButtonDisabled,
         ]}
         onPress={handleContinue}
-        disabled={selectedTypes.length === 0}
+        disabled={selectedTypes.length === 0 || isSaving}
       >
-        <Text style={styles.continueButtonText}>Continue</Text>
+        <Text style={styles.continueButtonText}>
+          {isSaving ? 'Saving...' : 'Continue'}
+        </Text>
       </TouchableOpacity>
     </SafeAreaView>
   );

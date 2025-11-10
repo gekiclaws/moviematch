@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../navigation/AppNavigator';
@@ -10,22 +10,22 @@ import { SuccessfullyJoinedStyles as styles } from '../styles/SuccessfullyJoined
 type Props = StackScreenProps<RootStackParamList, 'SuccessfullyJoined'>;
 
 export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { sessionId, userName } = route.params;
+  const { sessionId, userName, userId } = route.params;
   
   // State management
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  // Real-time listener reference
-  const [unsubscribeSession, setUnsubscribeSession] = useState<Unsubscribe | null>(null);
+  const hasNavigatedRef = useRef(false);
+  const sessionListenerRef = useRef<Unsubscribe | null>(null);
+  const isMountedRef = useRef(true);
 
   /**
    * Load initial session data
    */
   const loadSessionData = async () => {
     try {
+      if (!isMountedRef.current) return;
       setIsLoading(true);
       setError(null);
 
@@ -33,14 +33,23 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
       if (!sessionData) {
         throw new Error('Session not found');
       }
-      
+      if (!isMountedRef.current) return;
       setSession(sessionData);
     } catch (error) {
       console.error('Error loading session data:', error);
-      setError('Failed to load session data');
+      if (isMountedRef.current) {
+        setError('Failed to load session data');
+      }
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
+  };
+
+  const triggerAutoNavigation = (currentSession: Session) => {
+    if (hasNavigatedRef.current) return;
+    navigateToMovieMatching(currentSession);
   };
 
   /**
@@ -50,6 +59,8 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
     try {
       console.log('Setting up session listener for:', sessionId);
       
+      sessionListenerRef.current?.();
+
       const unsubscribe = SessionService.subscribeToSession(
         sessionId,
         (updatedSession) => {
@@ -57,9 +68,8 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
           if (updatedSession) {
             setSession(updatedSession);
             
-            // No automatic navigation - let user click button when ready
             if (updatedSession.sessionStatus === 'in progress') {
-              console.log('Session started! Button now available to join matching...');
+              triggerAutoNavigation(updatedSession);
             }
           } else {
             // Session was deleted
@@ -81,7 +91,7 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
         }
       );
       
-      setUnsubscribeSession(unsubscribe);
+      sessionListenerRef.current = unsubscribe;
     } catch (error) {
       console.error('Error setting up session listener:', error);
     }
@@ -91,46 +101,25 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
    * Clean up listeners
    */
   const cleanup = () => {
-    if (unsubscribeSession) {
-      unsubscribeSession();
-      setUnsubscribeSession(null);
-    }
+    sessionListenerRef.current?.();
+    sessionListenerRef.current = null;
   };
 
   /**
    * Navigate to movie matching screen
    */
-  const navigateToMovieMatching = () => {
-    if (!session) return;
+  const navigateToMovieMatching = (sessionOverride?: Session) => {
+    const activeSession = sessionOverride || session;
+    if (!activeSession || hasNavigatedRef.current) return;
+
+    hasNavigatedRef.current = true;
     
     navigation.navigate('MovieSwipe', {
       sessionId: sessionId,
-      userId: userName, // Using userName as userId for consistency
-      session: session
+      userId: userId,
+      sessionTypes: activeSession.movieType?.length ? activeSession.movieType : undefined,
+      session: activeSession
     });
-  };
-
-  /**
-   * Refresh session data manually
-   */
-  const refreshSession = async () => {
-    try {
-      setIsRefreshing(true);
-      setError(null);
-
-      const sessionData = await SessionService.get(sessionId);
-      if (!sessionData) {
-        throw new Error('Session not found');
-      }
-      
-      setSession(sessionData);
-      console.log('Session refreshed:', sessionData.sessionStatus);
-    } catch (error) {
-      console.error('Error refreshing session data:', error);
-      setError('Failed to refresh session data');
-    } finally {
-      setIsRefreshing(false);
-    }
   };
 
   /**
@@ -155,12 +144,29 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
 
   // Load data and setup listeners on mount
   useEffect(() => {
-    loadSessionData();
-    setupSessionListener();
+    isMountedRef.current = true;
+
+    const init = async () => {
+      await loadSessionData();
+      if (isMountedRef.current) {
+        setupSessionListener();
+      }
+    };
+
+    init();
     
     // Cleanup on unmount
-    return cleanup;
+    return () => {
+      isMountedRef.current = false;
+      cleanup();
+    };
   }, [sessionId]);
+
+  useEffect(() => {
+    if (session?.sessionStatus === 'in progress') {
+      triggerAutoNavigation(session);
+    }
+  }, [session?.sessionStatus]);
 
   // Show loading state
   if (isLoading) {
@@ -205,23 +211,11 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
         <View style={styles.statusContainer}>
           <Text style={styles.statusLabel}>Status</Text>
           <Text style={styles.statusText}>{getStatusText()}</Text>
-          
-          {/* Refresh Button */}
-          <TouchableOpacity 
-            style={styles.refreshButton}
-            onPress={refreshSession}
-            disabled={isRefreshing}
-            activeOpacity={0.8}
-          >
-            {isRefreshing ? (
-              <ActivityIndicator size="small" color="#ffffff" />
-            ) : (
-              <Text style={{ fontSize: 14, color: '#ffffff' }}>🔄</Text>
-            )}
-            <Text style={styles.refreshButtonText}>
-              {isRefreshing ? 'Refreshing...' : 'Refresh Status'}
-            </Text>
-          </TouchableOpacity>
+          <Text style={styles.connectionText}>
+            {session?.sessionStatus === 'awaiting'
+              ? 'Waiting for host to start…'
+              : 'Session ready. Launching movie picker...'}
+          </Text>
         </View>
 
         {/* Waiting Message */}
