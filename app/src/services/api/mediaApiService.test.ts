@@ -7,14 +7,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 
 // Mock the streaming-availability package
-const { mockGetShow, mockSearchByFilters, mockSearchByTitle, mockGetTopShows, mockGetGenres } = 
-  vi.hoisted(() => ({
-    mockGetShow: vi.fn(),
-    mockSearchByFilters: vi.fn(),
-    mockSearchByTitle: vi.fn(),
-    mockGetTopShows: vi.fn(),
-    mockGetGenres: vi.fn(),
-  }));
+const {
+  mockGetShow,
+  mockSearchByFilters,
+  mockSearchByTitle,
+  mockGetTopShows,
+  mockGetGenres,
+  mockConfiguration,
+} = vi.hoisted(() => ({
+  mockGetShow: vi.fn(),
+  mockSearchByFilters: vi.fn(),
+  mockSearchByTitle: vi.fn(),
+  mockGetTopShows: vi.fn(),
+  mockGetGenres: vi.fn(),
+  mockConfiguration: vi.fn(),
+}));
 
 vi.mock('streaming-availability', () => ({
   Client: vi.fn().mockImplementation(() => ({
@@ -28,7 +35,7 @@ vi.mock('streaming-availability', () => ({
       getGenres: mockGetGenres,
     },
   })),
-  Configuration: vi.fn(),
+  Configuration: mockConfiguration,
 }));
 
 // Import after mocks
@@ -47,6 +54,7 @@ describe('MovieApi', () => {
     mockSearchByTitle.mockReset();
     mockGetTopShows.mockReset();
     mockGetGenres.mockReset();
+    mockConfiguration.mockReset();
   });
 
   describe('getMovieById', () => {
@@ -129,8 +137,8 @@ describe('MovieApi', () => {
       expect(mockSearchByFilters).toHaveBeenCalledWith({
         country: 'us',
         showType: 'movie',
-        catalogs: 'netflix,prime',
-        genres: 'action',
+        catalogs: ['netflix', 'prime'],
+        genres: ['action'],
       });
       expect(result).toHaveLength(2);
       expect(result[0].title).toBe('Action Movie 1');
@@ -187,8 +195,8 @@ describe('MovieApi', () => {
       expect(mockSearchByFilters).toHaveBeenCalledWith({
         country: 'us',
         showType: 'movie',
-        catalogs: 'netflix',
-        genres: 'action,comedy',
+        catalogs: ['netflix'],
+        genres: ['action', 'comedy'],
         ratingMin: 70,
         yearMin: 2010,
         yearMax: 2023,
@@ -363,6 +371,17 @@ describe('MovieApi', () => {
       mockGetGenres.mockRejectedValueOnce(new Error('API Error'));
 
       await expect(getAvailableGenres()).rejects.toThrow('Failed to fetch genres');
+    });
+
+    it('configures the client with the RapidAPI host header', async () => {
+      mockGetGenres.mockResolvedValueOnce([{ id: 'id', name: 'name' }]);
+
+      await getAvailableGenres();
+
+      expect(mockConfiguration).toHaveBeenCalledWith({
+        apiKey: 'test-api-key',
+        headers: { 'X-RapidAPI-Host': 'streaming-availability.p.rapidapi.com' },
+      });
     });
   });
 });

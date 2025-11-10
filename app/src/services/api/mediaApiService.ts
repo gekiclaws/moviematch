@@ -2,12 +2,21 @@ import * as streamingAvailability from "streaming-availability";
 import type { Media, StreamingGroup } from "../../types/media";
 import { MOVIE_API_KEY } from '@env';
 
+const RAPID_API_HOST = 'streaming-availability.p.rapidapi.com';
+
 
 // Initialize the API client
 const createClient = () => {
+  if (!MOVIE_API_KEY) {
+    throw new Error('MOVIE_API_KEY is not defined. Please add it to your .env file.');
+  }
+
   return new streamingAvailability.Client(
     new streamingAvailability.Configuration({
       apiKey: MOVIE_API_KEY,
+      headers: {
+        'X-RapidAPI-Host': RAPID_API_HOST,
+      },
     })
   );
 };

@@ -10,7 +10,7 @@
    npm install
    ```
 
-3. Add the API key to the .env file (see setup sample for fields needed)
+3. Copy `app/.env.sample` to `app/.env` and set `MOVIE_API_KEY` to your RapidAPI Streaming Availability key. Restart Expo whenever you edit this file so the new value is bundled.
 
 4. Launch the Metro bundler:
 
