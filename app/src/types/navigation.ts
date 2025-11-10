@@ -14,6 +14,7 @@ export type RootStackParamList = {
   PlatformSelection: PlatformSelectionParams;
   FavoriteMediaSelection: FavoriteMediaSelectionParams;
   SessionTypeSelection: SessionTypeSelectionParams;
+  RecommendationScreen: RecommendationScreenParams;
 };
 
 // Individual Screen Params Info
@@ -56,6 +57,10 @@ export interface PlatformSelectionParams {
 
 export interface FavoriteMediaSelectionParams {
     userId: string;
+}
+
+export interface RecommendationScreenParams {
+    sessionId: string;
 }
 
 

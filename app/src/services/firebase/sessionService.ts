@@ -10,7 +10,7 @@ import {
 } from 'firebase/firestore';
 
 import { db } from './index';
-import type { PlayerReadiness, Session } from '../../types/session';
+import type { MatchedTitle, PlayerReadiness, Session } from '../../types/session';
 
 const collectionRef = collection(db, 'sessions');
 
@@ -153,7 +153,60 @@ export const SessionService = {
     const allPlayersDone = Object.values(updatedPlayerStatus).every((status) => status === 'done');
 
     if (allPlayersDone) {
+      const swipes = Array.isArray(session.swipes) ? session.swipes : [];
+      const likeMap = new Map<string, Set<string>>();
+
+      swipes.forEach((swipe) => {
+        if (swipe.decision !== 'like') {
+          return;
+        }
+
+        if (!likeMap.has(swipe.userId)) {
+          likeMap.set(swipe.userId, new Set());
+        }
+
+        likeMap.get(swipe.userId)!.add(swipe.mediaId);
+      });
+
+      const intersection = session.userIds.reduce<Set<string> | null>((acc, user) => {
+        const userLikes = likeMap.get(user) ?? new Set<string>();
+        if (acc === null) {
+          return new Set(userLikes);
+        }
+
+        return new Set(Array.from(acc).filter((mediaId) => userLikes.has(mediaId)));
+      }, null);
+
+      const matchedIdsSet = intersection ?? new Set<string>();
+
+      const orderedMatchedIds = swipes
+        .filter((swipe) => swipe.decision === 'like' && matchedIdsSet.has(swipe.mediaId))
+        .map((swipe) => swipe.mediaId)
+        .filter((mediaId, index, array) => array.indexOf(mediaId) === index);
+
+      const matchedTitles: MatchedTitle[] = orderedMatchedIds.map((mediaId) => {
+        const swipeWithMeta = swipes.find(
+          (swipe) => swipe.mediaId === mediaId && swipe.decision === 'like'
+        );
+
+        const match: MatchedTitle = {
+          id: mediaId,
+          title: swipeWithMeta?.mediaTitle ?? mediaId,
+        };
+
+        if (swipeWithMeta?.posterUrl) {
+          match.posterUrl = swipeWithMeta.posterUrl;
+        }
+
+        if (swipeWithMeta?.streamingServices && swipeWithMeta.streamingServices.length > 0) {
+          match.streamingServices = swipeWithMeta.streamingServices;
+        }
+
+        return match;
+      });
+
       updates.sessionStatus = 'complete';
+      updates.matchedTitles = matchedTitles;
     }
 
     await updateDoc(sessionRef, updates);

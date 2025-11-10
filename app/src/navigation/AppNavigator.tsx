@@ -14,6 +14,7 @@ import GenreSelectionScreen from "../screens/GenreSelectionScreen";
 import PlatformSelectionScreen from "../screens/PlatformSelectionScreen";
 import FavoriteMediaSelectionScreen from "../screens/FavoriteMediaScreen";
 import SessionTypeSelectionScreen from "../screens/SessionTypeSelectionScreen"
+import RecommendationScreen from "../screens/RecommendationScreen";
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -104,9 +105,15 @@ export default function AppNavigator() {
                 />
 
                 { /* Movie Swip Screen */ }
-                <Stack.Screen 
-                    name="MovieSwipe" 
+                <Stack.Screen
+                    name="MovieSwipe"
                     component={MovieSwipeScreen}
+                    options={{ headerShown: false }}
+                />
+                { /* Recommendation Screen */ }
+                <Stack.Screen
+                    name="RecommendationScreen"
+                    component={RecommendationScreen}
                     options={{ headerShown: false }}
                 />
             </Stack.Navigator>

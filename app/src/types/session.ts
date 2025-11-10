@@ -4,6 +4,13 @@ export type SessionStatus = 'awaiting' | 'in progress' | 'complete';
 
 export type PlayerReadiness = 'awaiting' | 'done';
 
+export interface MatchedTitle {
+  id: string;
+  title: string;
+  posterUrl?: string;
+  streamingServices?: string[];
+}
+
 export interface Session {
   id: string;
   userIds: string[];
@@ -12,7 +19,7 @@ export interface Session {
   streamingServices: string[];
   favoriteTitles: string[];
   swipes: Swipe[];
-  matchedTitles?: string[];
+  matchedTitles?: MatchedTitle[];
   createdAt: number;
   sessionStatus: SessionStatus;
   playerStatus: Record<string, PlayerReadiness>;
