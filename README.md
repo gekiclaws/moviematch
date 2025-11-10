@@ -10,7 +10,9 @@
    npm install
    ```
 
-3. Launch the Metro bundler:
+3. Add the API key to the .env file (see setup sample for fields needed)
+
+4. Launch the Metro bundler:
 
    ```bash
    npm run start
@@ -23,7 +25,7 @@
    - `npm run web` to run the web build in your browser.
    - Or scan the QR code with the Expo Go app on a physical device.
 
-4. When you are done, stop the bundler with `Ctrl+C`.
+5. When you are done, stop the bundler with `Ctrl+C`.
 
 ## Running tests
 
