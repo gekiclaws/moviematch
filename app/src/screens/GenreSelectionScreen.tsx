@@ -135,13 +135,6 @@ export default function GenreSelectionScreen({ route, navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>←</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Title */}
       <View style={styles.titleContainer}>
         <Text style={styles.title}>What are your favorite genres?</Text>
@@ -207,15 +200,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1a1a1a',
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  backButton: {
-    fontSize: 32,
-    color: '#F5C518',
-    fontWeight: 'bold',
   },
   titleContainer: {
     paddingHorizontal: 30,
