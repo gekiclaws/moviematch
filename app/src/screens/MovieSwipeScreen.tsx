@@ -250,12 +250,6 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
           <Text style={styles.noMoreSubtext}>
             Waiting for your partner to finish...
           </Text>
-          <TouchableOpacity
-            style={styles.retryButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.retryButtonText}>Back to Lobby</Text>
-          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
