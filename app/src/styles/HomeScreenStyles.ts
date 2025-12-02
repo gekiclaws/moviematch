@@ -7,7 +7,7 @@ export const styles = StyleSheet.create({
  },
  content: {
    flex: 1,
-   paddingHorizontal: 24,
+   paddingHorizontal: 30,
    paddingVertical: 20,
    justifyContent: 'center',
  },
@@ -19,12 +19,12 @@ export const styles = StyleSheet.create({
  appTitle: {
    fontSize: 32,
    fontWeight: 'bold',
-   color: '#ffffffff',
+   color: '#fff6f6ff',
    marginBottom: 8,
  },
  subtitle: {
    fontSize: 16,
-   color: '#7f8c8d',
+   color: '#b3b3b3ff',
    fontStyle: 'italic',
  },
 
@@ -90,5 +90,5 @@ export const styles = StyleSheet.create({
    fontSize: 14,
    color: '#030303ff',
    opacity: 0.9,
- },
+ }
 });

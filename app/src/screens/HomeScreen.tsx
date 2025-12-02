@@ -14,6 +14,7 @@ import type { RootStackParamList } from '../types/navigation';
 import { SessionService } from '../services/firebase/sessionService';
 import { UserManager } from '../services/firebase/userManager';
 
+import FooterNav from "../components/FooterNav";
 // Import styles
 import { styles } from '../styles/HomeScreenStyles';
 
@@ -100,8 +101,9 @@ export default function HomeScreen({ navigation }: Props) {
                         <Text style={styles.buttonSubtext}>Enter your partner's room code</Text>
                     </TouchableOpacity>
                 </View>
-
             </View>
+            {/* Footer Navigation Bar */}
+            <FooterNav />
         </SafeAreaView>
     )
 

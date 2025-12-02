@@ -123,12 +123,6 @@ export default function  PlatformSelectionScreen({ route, navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>←</Text>
-        </TouchableOpacity>
-      </View>
 
       {/* Title */}
       <View style={styles.titleContainer}>

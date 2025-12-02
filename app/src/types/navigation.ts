@@ -6,6 +6,7 @@ import type { User } from './user';
 // Data being passed between screens defined
 export type RootStackParamList = {
   Home: undefined; // No parameters needed
+  Profile: ProfileParams;
   LobbyWaiting: LobbyWaitingParams;
   JoinRoom: undefined; // User can join a room without params
   SuccessfullyJoined: SuccessfullyJoinedParams;
@@ -16,6 +17,11 @@ export type RootStackParamList = {
   SessionTypeSelection: SessionTypeSelectionParams;
   RecommendationScreen: RecommendationScreenParams;
 };
+
+
+export interface ProfileParams{
+    userId:string;
+}
 
 // Individual Screen Params Info
 export interface LobbyWaitingParams {

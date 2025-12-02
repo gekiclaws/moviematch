@@ -6,6 +6,7 @@ import { View, Text } from 'react-native';
 
 // Import actual screen components
 import HomeScreen from '../screens/HomeScreen';
+import ProfileScreen from "../screens/ProfileScreen";
 import JoinRoomScreen from '../screens/JoinRoomScreen';
 import LobbyWaitingScreen from '../screens/LobbyWaitingScreen';
 import { SuccessfullyJoinedScreen } from '../screens/SuccessfullyJoinedScreen';
@@ -24,7 +25,8 @@ export default function AppNavigator() {
             <Stack.Navigator
                 initialRouteName="GenreSelection"
                 screenOptions= {{
-                    headerStyle: { backgroundColor: '#2c3e50' }, // Dark blue header
+                    title: "",
+                    headerStyle: { backgroundColor: '#000000ff' }, // Dark blue header
                     headerTintColor: '#ecf0f1',                 // Light text
                     headerTitleStyle: { fontWeight: 'bold' },   // Bold titles
                     cardStyle: { backgroundColor: '#ecf0f1' },  // Light background
@@ -34,7 +36,6 @@ export default function AppNavigator() {
                 <Stack.Screen
                     name="GenreSelection"
                     component={ GenreSelectionScreen }
-                    options={{ headerShown: false }}
         
                 />
 
@@ -42,14 +43,12 @@ export default function AppNavigator() {
                 <Stack.Screen
                     name="PlatformSelection"
                     component={ PlatformSelectionScreen }
-                    options={{ headerShown: false }}
                 />
 
                 {/* Favorite Media Selection Screen (Onboarding #3)*/}
                 <Stack.Screen
                     name="FavoriteMediaSelection"
                     component={ FavoriteMediaSelectionScreen }
-                    options={{headerShown: false }}
                 />
                 
                 {/* Home Screen */}
@@ -57,7 +56,14 @@ export default function AppNavigator() {
                     name="Home"
                     component={HomeScreen}
                     options={{ 
-                        headerLeft: () => null}} // No back button on home screen
+                        headerLeft: () => null,
+                        animation: "slide_from_left"}} // No back button on home screen
+
+                />
+                {/* Profile Edit Screen */}
+                <Stack.Screen
+                    name="Profile"
+                    component={ProfileScreen}
 
                 />
                 

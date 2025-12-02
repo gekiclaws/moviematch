@@ -141,38 +141,38 @@ export const UserService = {
   },
 
   /**
-   * Add a favorite title to user's preferences
+   * Add a favorite media to user's preferences
    * @param userId - The user ID
-   * @param title - Title to add to favorites
+   * @param media - Media (Movie/Show) to add to favorites
    */
-  async addFavoriteTitle(userId: string, title: string): Promise<void> {
+  async addFavoriteTitle(userId: string, media: string): Promise<void> {
     const user = await this.get(userId);
     if (!user) {
       throw new Error('User not found');
     }
 
-    const updatedFavorites = [...user.preferences.favoriteTitles];
-    if (!updatedFavorites.includes(title)) {
-      updatedFavorites.push(title);
-      await this.updatePreferences(userId, { favoriteTitles: updatedFavorites });
+    const updatedFavorites = [...user.preferences.favoriteMedia];
+    if (!updatedFavorites.includes(media)) {
+      updatedFavorites.push(media);
+      await this.updatePreferences(userId, { favoriteMedia: updatedFavorites });
     }
   },
 
   /**
-   * Remove a favorite title from user's preferences
+   * Remove a favorite media from user's preferences
    * @param userId - The user ID  
-   * @param title - Title to remove from favorites
+   * @param media - Media to remove from favorites
    */
-  async removeFavoriteTitle(userId: string, title: string): Promise<void> {
+  async removeFavoriteTitle(userId: string, media: string): Promise<void> {
     const user = await this.get(userId);
     if (!user) {
       throw new Error('User not found');
     }
 
-    const updatedFavorites = user.preferences.favoriteTitles.filter(
-      t => t !== title
+    const updatedFavorites = user.preferences.favoriteMedia.filter(
+      t => t !== media
     );
-    await this.updatePreferences(userId, { favoriteTitles: updatedFavorites });
+    await this.updatePreferences(userId, { favoriteMedia: updatedFavorites });
   },
 
   // User Discovery and Querying
@@ -229,7 +229,7 @@ export const UserService = {
         selectedTypes: [],
         selectedGenres: [],
         selectedPlatforms: [],
-        favoriteTitles: [],
+        favoriteMedia: [],
       },
       joinedRoom: '',
       createdAt: Date.now(),
