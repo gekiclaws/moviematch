@@ -64,7 +64,7 @@ export default function HomeScreen({ navigation }: Props) {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             <View style={styles.content}>
                 {/* App Title */}
                 <View style={styles.titleContainer}>
@@ -104,7 +104,7 @@ export default function HomeScreen({ navigation }: Props) {
             </View>
             {/* Footer Navigation Bar */}
             <FooterNav />
-        </SafeAreaView>
+        </View>
     )
 
 }

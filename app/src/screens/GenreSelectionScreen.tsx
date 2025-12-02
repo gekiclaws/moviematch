@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -20,95 +20,129 @@ type Props = {
   route: {
     params?: {
       userId?: string;
+      editMode?: boolean;
     };
   };
   navigation: any;
 };
 
 export default function GenreSelectionScreen({ route, navigation }: Props) {
+  const editMode = route.params?.editMode ?? false;
+  const userId = route.params?.userId || UserManager.getCurrentUserId();
+
   const [genres, setGenres] = useState<Genre[]>([]);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadGenres();
+  
+        // Log the favoriteMedia to debug
+        console.log("Edit Mode?:", editMode);
+      }, []);
+
+
+  useEffect(() => {
+    const init = async () => {
+      try {
+        setLoading(true);
+
+        // Load existing user preferences if editing
+        if (editMode && userId) {
+          const user = await UserService.get(userId);
+          if (user) {
+            setSelectedGenres(user.preferences.selectedGenres || []);
+          }
+        }
+
+        // Load genre list
+        const fetchedGenres = await getAvailableGenres();
+        setGenres(fetchedGenres);
+
+      } catch (err: any) {
+        console.error('Error initializing genre screen:', err);
+        setError('Failed to load genres');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    init();
   }, []);
 
-  const loadGenres = async () => {
+  // --- Toggle selection ---
+  const toggleGenre = (genreId: string) => {
+    setSelectedGenres((prev) =>
+      prev.includes(genreId)
+        ? prev.filter((id) => id !== genreId)
+        : [...prev, genreId]
+    );
+  };
+
+    const loadGenres = useCallback(async () => {
+      try {
+        setLoading(true);
+        const fetchedGenres = await getAvailableGenres();
+        setGenres(fetchedGenres);
+      } catch (err: any) {
+        console.error('Error loading genres:', err);
+        setError('Failed to load genres');
+      } finally {
+        setLoading(false);
+      }
+    }, []);
+
+  // --- Continue or Update ---
+  const handleSave = async () => {
+    if (selectedGenres.length === 0) {
+      Alert.alert('Select Genres', 'Please select at least one genre to continue');
+      return;
+    }
+
     try {
       setLoading(true);
-      const fetchedGenres = await getAvailableGenres();
-      setGenres(fetchedGenres);
-    } catch (err: any) {
-      console.error('Error loading genres:', err);
-      setError('Failed to load genres');
+
+      if (!userId) {
+        Alert.alert('Error', 'User session not found');
+        return;
+      }
+
+      await UserService.updatePreferences(userId, {
+        selectedGenres,
+      });
+
+      console.log('Genres saved successfully:', selectedGenres);
+
+      if (editMode) {
+        navigation.navigate("Profile");
+        return;
+      }
+
+      navigation.navigate("PlatformSelection", { userId });
+
+    } catch (error: any) {
+      console.error('Error saving genres:', error);
+      Alert.alert('Error', 'Failed to save genres. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const toggleGenre = (genreId: string) => {
-    setSelectedGenres((prev) => {
-      if (prev.includes(genreId)) {
-        return prev.filter((id) => id !== genreId);
-      } else {
-        return [...prev, genreId];
-      }
-    });
+    const renderGenreCard = ({ item }: { item: Genre }) => {
+    const isSelected = selectedGenres.includes(item.id);
+
+    return (
+      <SelectableCard
+        id={item.id}
+        label={item.name}
+        emoji={getGenreEmoji(item.name)}
+        isSelected={isSelected}
+        onPress={toggleGenre}
+      />
+    );
   };
 
-  const handleContinue = async () => {
-    if (selectedGenres.length === 0) {
-        Alert.alert('Select Genres', 'Please select at least one genre to continue');
-        return;
-    }
-
-    try {
-        setLoading(true);
-
-        // Get userId - either from route params or from UserManager
-        const userId = route.params?.userId || UserManager.getCurrentUserId();
-    
-    if (!userId) {
-      Alert.alert('Error', 'User session not found');
-      return;
-    }
-
-    // Update user preferences with selected genres using the helper method
-    await UserService.updatePreferences(userId, {
-      selectedGenres: selectedGenres,
-    });
-
-    console.log('Genres saved successfully:', selectedGenres);
-
-    // Navigate to streaming services screen
-    navigation.navigate('PlatformSelection', {
-      userId: userId,
-    });
-
-  } catch (error: any) {
-    console.error('Error saving genres:', error);
-    Alert.alert('Error', 'Failed to save genres. Please try again.');
-  } finally {
-    setLoading(false);
-  }
-};
-
-  const renderGenreCard = ({ item }: { item: Genre }) => {
-  const isSelected = selectedGenres.includes(item.id);
-
-  return (
-    <SelectableCard
-      id={item.id}
-      label={item.name}
-      emoji={getGenreEmoji(item.name)}
-      isSelected={isSelected}
-      onPress={toggleGenre}
-    />
-  );
-};
-
+  // --- Loading screen ---
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -120,12 +154,13 @@ export default function GenreSelectionScreen({ route, navigation }: Props) {
     );
   }
 
+  // --- Error screen ---
   if (error) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadGenres}>
+          <TouchableOpacity style={styles.retryButton} onPress={() => loadGenres()}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -138,25 +173,29 @@ export default function GenreSelectionScreen({ route, navigation }: Props) {
       {/* Title */}
       <View style={styles.titleContainer}>
         <Text style={styles.title}>What are your favorite genres?</Text>
-        <Text style={styles.subtitle}>Select one or more to continue</Text>
+        <Text style={styles.subtitle}>
+          {editMode ? "Update your selection" : "Select one or more to continue"}
+        </Text>
       </View>
 
-      {/* Continue Button */}
+      {/* Continue / Update Button */}
       <TouchableOpacity
         style={[
           styles.continueButton,
           selectedGenres.length === 0 && styles.continueButtonDisabled,
         ]}
-        onPress={handleContinue}
+        onPress={handleSave}
         disabled={selectedGenres.length === 0}
       >
-        <Text style={styles.continueButtonText}>Continue</Text>
+        <Text style={styles.continueButtonText}>
+          {editMode ? "Update" : "Continue"}
+        </Text>
       </TouchableOpacity>
 
       {/* Divider */}
       <View style={styles.divider} />
 
-      {/* Genre Grid */}
+      {/* Genres */}
       <FlatList
         data={genres}
         renderItem={renderGenreCard}
@@ -170,7 +209,7 @@ export default function GenreSelectionScreen({ route, navigation }: Props) {
   );
 }
 
-// Helper function to get emoji for each genre
+// Helper for emojis
 const getGenreEmoji = (genreName: string): string => {
   const emojiMap: { [key: string]: string } = {
     'Action': '🎬',

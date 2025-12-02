@@ -74,7 +74,7 @@ export default function ProfileScreen({ navigation }: any) {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Favorite Genres</Text>
-            <TouchableOpacity onPress={() => navigation.navigate("GenreSelection")}>
+            <TouchableOpacity onPress={() => navigation.navigate("GenreSelection", {editMode: true})}>
               <Text style={styles.editText}>Edit</Text>
             </TouchableOpacity>
           </View>
@@ -95,7 +95,7 @@ export default function ProfileScreen({ navigation }: any) {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>My Streaming Platforms</Text>
-            <TouchableOpacity onPress={() => navigation.navigate("PlatformSelection")}>
+            <TouchableOpacity onPress={() => navigation.navigate("PlatformSelection", {editMode: true})}>
               <Text style={styles.editText}>Edit</Text>
             </TouchableOpacity>
           </View>
@@ -117,7 +117,7 @@ export default function ProfileScreen({ navigation }: any) {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Favorite Movies</Text>
             <TouchableOpacity
-              onPress={() => navigation.navigate("FavoriteMediaSelection")}
+              onPress={() => navigation.navigate("FavoriteMediaSelection", {editMode: true})}
             >
               <Text style={styles.editText}>Edit</Text>
             </TouchableOpacity>

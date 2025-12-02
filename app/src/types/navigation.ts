@@ -55,14 +55,17 @@ export interface SessionTypeSelectionParams {
 
 export interface GenreSelectionParams {
     userId: string;
+    editMode?: boolean;
 }
 
 export interface PlatformSelectionParams {
     userId: string;
+    editMode?: boolean;
 }
 
 export interface FavoriteMediaSelectionParams {
     userId: string;
+    editMode?: boolean;
 }
 
 export interface RecommendationScreenParams {
