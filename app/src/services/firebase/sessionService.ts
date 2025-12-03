@@ -7,6 +7,9 @@ import {
   updateDoc,
   onSnapshot,
   runTransaction,
+  query,
+  where,
+  getDocs,
   Unsubscribe,
 } from 'firebase/firestore';
 
@@ -16,16 +19,74 @@ import type { MatchedTitle, PlayerReadiness, Session } from '../../types/session
 const collectionRef = collection(db, 'sessions');
 
 export const SessionService = {
-  async create(hostId: string, sessionData: Omit<Session, 'id' | 'userIds' | 'playerStatus'>): Promise<string> {
+  /**
+   * Generate a unique 6-digit room code
+   */
+  async generateRoomCode(): Promise<string> {
+    const maxAttempts = 10;
+    let attempts = 0;
+    
+    while (attempts < maxAttempts) {
+      // Generate 6-digit code (100000 - 999999)
+      const roomCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // Check if code is already in use
+      const isAvailable = await this.isRoomCodeAvailable(roomCode);
+      if (isAvailable) {
+        return roomCode;
+      }
+      
+      attempts++;
+    }
+    
+    throw new Error('Unable to generate unique room code after multiple attempts');
+  },
+
+  /**
+   * Check if a room code is available
+   */
+  async isRoomCodeAvailable(roomCode: string): Promise<boolean> {
+    const q = query(collectionRef, where('roomCode', '==', roomCode));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.empty;
+  },
+
+  /**
+   * Get session by room code
+   */
+  async getByRoomCode(roomCode: string): Promise<Session | null> {
+    const q = query(collectionRef, where('roomCode', '==', roomCode));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      return null;
+    }
+    
+    const doc = querySnapshot.docs[0];
+    const data = doc.data() as Omit<Session, 'id'> & {
+      playerStatus?: Record<string, PlayerReadiness>;
+    };
+
+    const playerStatus = data.playerStatus ?? (Object.fromEntries(
+      data.userIds.map((id) => [id, 'awaiting' as PlayerReadiness])
+    ) as Record<string, PlayerReadiness>);
+
+    return { id: doc.id, ...data, playerStatus };
+  },
+  async create(hostId: string, sessionData: Omit<Session, 'id' | 'roomCode' | 'userIds' | 'playerStatus'>): Promise<{ sessionId: string; roomCode: string }> {
+    // Generate unique room code
+    const roomCode = await this.generateRoomCode();
+    
     const data = {
       ...sessionData,
+      roomCode,
       userIds: [hostId],
       sessionStatus: 'awaiting' as const,
       playerStatus: Object.fromEntries([[hostId, 'awaiting' as PlayerReadiness]]) as Record<string, PlayerReadiness>,
     }
 
     const docRef = await addDoc(collectionRef, data);
-    return docRef.id;
+    return { sessionId: docRef.id, roomCode };
   },
 
   async get(id: string): Promise<Session | null> {
@@ -75,8 +136,8 @@ export const SessionService = {
     
     return session.sessionStatus;
   },
-  async joinSession(sessionId: string, userId: string): Promise<void> {
-    const session = await this.get(sessionId);
+  async joinSession(roomCode: string, userId: string): Promise<void> {
+    const session = await this.getByRoomCode(roomCode);
     if (!session) throw new Error('Room does not exist');
 
     // Check if the user can join (< 2 users and not already in session)
@@ -90,7 +151,7 @@ export const SessionService = {
       [userId]: 'awaiting',
     };
 
-    await this.update(sessionId, { userIds: updateUserIds, playerStatus: updatedPlayerStatus });
+    await this.update(session.id, { userIds: updateUserIds, playerStatus: updatedPlayerStatus });
   },
 
   async leaveSession(sessionId: string, userId: string): Promise<void> {
