@@ -73,7 +73,7 @@ export class UserManager {
           selectedTypes: [],
           selectedGenres: [],
           selectedPlatforms: [],
-          favoriteTitles: [],
+          favoriteMedia: [],
         },
         joinedRoom: '',
         createdAt: Date.now(),

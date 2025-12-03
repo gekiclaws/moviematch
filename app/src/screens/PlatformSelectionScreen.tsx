@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -15,26 +14,57 @@ import SelectableCard from "../components/SelectableCard";
 import { UserService } from '../services/firebase/userService';
 import { UserManager } from '../services/firebase/userManager';
 import { STREAMING_PLATFORMS } from '../types/platform';
+import { styles } from "../styles/PlatformSelectionStyles";
 
 type Props = {
   route: {
     params?: {
       userId?: string;
+      editMode?: boolean;
     };
   };
   navigation: any;
 };
 
-export default function  PlatformSelectionScreen({ route, navigation }: Props) {
+export default function PlatformSelectionScreen({ route, navigation }: Props) {
+  const editMode = route.params?.editMode ?? false;
+  const userId = route.params?.userId || UserManager.getCurrentUserId();
+
   const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setPlatforms(STREAMING_PLATFORMS);
-    setLoading(false);
-}, []);
+    console.log("Edit Mode?:", editMode);
+  }, []);
+
+  useEffect(() => {
+    const init = async () => {
+      try {
+        setLoading(true);
+
+        // Load existing user preferences if editing
+        if (editMode && userId) {
+          const user = await UserService.get(userId);
+          if (user) {
+            setSelectedPlatforms(user.preferences.selectedPlatforms || []);
+          }
+        }
+
+        // Load platforms list
+        setPlatforms(STREAMING_PLATFORMS);
+
+      } catch (err: any) {
+        console.error('Error initializing platform screen:', err);
+        setError('Failed to load platforms');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    init();
+  }, []);
 
   const togglePlatform = (platformId: string) => {
     setSelectedPlatforms((prev) => {
@@ -46,56 +76,54 @@ export default function  PlatformSelectionScreen({ route, navigation }: Props) {
     });
   };
 
-  const handleContinue = async () => {
+  const handleSave = async () => {
     if (selectedPlatforms.length === 0) {
-        Alert.alert('Select Platform', 'Please select at least one platform to continue');
-        return;
-    }
-
-    try {
-        setLoading(true);
-
-        // Get userId - either from route params or from UserManager
-        const userId = route.params?.userId || UserManager.getCurrentUserId();
-    
-    if (!userId) {
-      Alert.alert('Error', 'User session not found');
+      Alert.alert('Select Platform', 'Please select at least one platform to continue');
       return;
     }
 
-    // Update user preferences with selected platforms using the helper method
-    await UserService.updatePreferences(userId, {
-      selectedPlatforms: selectedPlatforms,
-    });
+    try {
+      setLoading(true);
 
-    console.log('Platforms saved successfully:', selectedPlatforms);
+      if (!userId) {
+        Alert.alert('Error', 'User session not found');
+        return;
+      }
 
-    // Navigate to streaming services screen
-    navigation.navigate('FavoriteMediaSelection', {
-      userId: userId,
-    });
+      await UserService.updatePreferences(userId, {
+        selectedPlatforms: selectedPlatforms,
+      });
 
-  } catch (error: any) {
-    console.error('Error saving platforms:', error);
-    Alert.alert('Error', 'Failed to save platforms. Please try again.');
-  } finally {
-    setLoading(false);
-  }
-};
+      console.log('Platforms saved successfully:', selectedPlatforms);
+
+      if (editMode) {
+        navigation.navigate("Profile");
+        return;
+      }
+
+      navigation.navigate('FavoriteMediaSelection', { userId });
+
+    } catch (error: any) {
+      console.error('Error saving platforms:', error);
+      Alert.alert('Error', 'Failed to save platforms. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderPlatformCard = ({ item }: { item: Platform }) => {
-  const isSelected = selectedPlatforms.includes(item.id);
+    const isSelected = selectedPlatforms.includes(item.id);
 
-  return (
-    <SelectableCard
-      id={item.id}
-      label={item.name}
-      emoji={getPlatformEmoji(item.name)}
-      isSelected={isSelected}
-      onPress={togglePlatform}
-    />
-  );
-};
+    return (
+      <SelectableCard
+        id={item.id}
+        label={item.name}
+        emoji={getPlatformEmoji(item.name)}
+        isSelected={isSelected}
+        onPress={togglePlatform}
+      />
+    );
+  };
 
   if (loading) {
     return (
@@ -113,7 +141,15 @@ export default function  PlatformSelectionScreen({ route, navigation }: Props) {
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton}>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => {
+              setError(null);
+              setLoading(true);
+              setPlatforms(STREAMING_PLATFORMS);
+              setLoading(false);
+            }}
+          >
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -123,29 +159,26 @@ export default function  PlatformSelectionScreen({ route, navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>←</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Title */}
       <View style={styles.titleContainer}>
         <Text style={styles.title}>What streaming services do you have?</Text>
-        <Text style={styles.subtitle}>Select one or more to continue</Text>
+        <Text style={styles.subtitle}>
+          {editMode ? "Update your selection" : "Select one or more to continue"}
+        </Text>
       </View>
 
-      {/* Continue Button */}
+      {/* Continue / Update Button */}
       <TouchableOpacity
         style={[
           styles.continueButton,
           selectedPlatforms.length === 0 && styles.continueButtonDisabled,
         ]}
-        onPress={handleContinue}
+        onPress={handleSave}
         disabled={selectedPlatforms.length === 0}
       >
-        <Text style={styles.continueButtonText}>Continue</Text>
+        <Text style={styles.continueButtonText}>
+          {editMode ? "Update" : "Continue"}
+        </Text>
       </TouchableOpacity>
 
       {/* Divider */}
@@ -179,129 +212,3 @@ const getPlatformEmoji = (platformName: string): string => {
 
   return emojiMap[platformName] || '📺';
 };
-
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#1a1a1a',
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  backButton: {
-    fontSize: 32,
-    color: '#F5C518',
-    fontWeight: 'bold',
-  },
-  titleContainer: {
-    paddingHorizontal: 30,
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#aaa',
-    textAlign: 'center',
-  },
-  continueButton: {
-    backgroundColor: '#F5C518',
-    paddingVertical: 15,
-    paddingHorizontal: 40,
-    borderRadius: 25,
-    alignSelf: 'center',
-    marginVertical: 10,
-    minWidth: 200,
-  },
-  continueButtonDisabled: {
-    backgroundColor: '#555',
-  },
-  continueButtonText: {
-    color: '#000',
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#333',
-    marginHorizontal: 30,
-    marginVertical: 15,
-  },
-  genreGrid: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  row: {
-    justifyContent: 'space-between',
-    marginBottom: 15,
-  },
-  genreCard: {
-    width: '48%',
-    aspectRatio: 1,
-    backgroundColor: '#6c230fff',
-    borderRadius: 15,
-    padding: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: 'transparent',
-  },
-  genreCardSelected: {
-    borderColor: '#F5C518',
-    backgroundColor: '#A0522D',
-  },
-  genreIcon: {
-    marginBottom: 10,
-  },
-  genreEmoji: {
-    fontSize: 48,
-  },
-  genreText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 15,
-  },
-  loadingText: {
-    color: '#aaa',
-    fontSize: 16,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    gap: 20,
-  },
-  errorText: {
-    color: '#F44336',
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  retryButton: {
-    backgroundColor: '#F5C518',
-    paddingHorizontal: 30,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#000',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});

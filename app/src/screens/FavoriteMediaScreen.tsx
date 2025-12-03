@@ -16,19 +16,22 @@ import { searchMoviesByTitle, getPopularMovies } from '../services/api/mediaApiS
 import { UserService } from '../services/firebase/userService';
 import { UserManager } from '../services/firebase/userManager';
 import type { Media } from '../types/media';
+import { styles } from "../styles/FavoriteMediaStyles";
 
 type Props = {
   route: {
     params?: {
       userId?: string;
+      editMode?: boolean;
     };
   };
   navigation: any;
 };
 
-
-
 export default function FavoriteMediasScreen({ route, navigation }: Props) {
+  const editMode = route.params?.editMode ?? false;
+  const userId = route.params?.userId || UserManager.getCurrentUserId();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Media[]>([]);
   const [selectedMedias, setSelectedMedias] = useState<string[]>([]);
@@ -37,42 +40,65 @@ export default function FavoriteMediasScreen({ route, navigation }: Props) {
   const [initialMedia, setInitialMedia] = useState<Media[]>([]);
 
   useEffect(() => {
-    loadPopularMovies();
+    console.log("Edit Mode?:", editMode);
+  }, []);
+
+  useEffect(() => {
+    const init = async () => {
+      try {
+        setLoading(true);
+
+        // Load existing user preferences if editing
+        if (editMode && userId) {
+          const user = await UserService.get(userId);
+          if (user) {
+            setSelectedMedias(user.preferences.favoriteMedia || []);
+          }
+        }
+
+        // Load popular movies
+        await loadPopularMovies();
+
+      } catch (err: any) {
+        console.error('Error initializing favorite media screen:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    init();
   }, []);
 
   const loadPopularMovies = async () => {
-  try {
-    setSearching(true);
-    // Load popular movies from Netflix (or any service)
-    const popular = await getPopularMovies('netflix', 'us');
-    setInitialMedia(popular);
-    setSearchResults(popular); // Show them in the grid
-  } catch (err: any) {
-    console.error('Error loading popular movies:', err);
-  } finally {
-    setSearching(false);
-  }
-};
-  
+    try {
+      setSearching(true);
+      const popular = await getPopularMovies('netflix', 'us');
+      setInitialMedia(popular);
+      setSearchResults(popular);
+    } catch (err: any) {
+      console.error('Error loading popular movies:', err);
+    } finally {
+      setSearching(false);
+    }
+  };
 
   const handleSearch = async () => {
-  if (!searchQuery.trim()) {
-    // If search is cleared, show popular movies again
-    setSearchResults(initialMedia);
-    return;
-  }
+    if (!searchQuery.trim()) {
+      setSearchResults(initialMedia);
+      return;
+    }
 
-  try {
-    setSearching(true);
-    const results = await searchMoviesByTitle(searchQuery, 'us');
-    setSearchResults(results);
-  } catch (err: any) {
-    console.error('Error searching movies:', err);
-    Alert.alert('Error', 'Failed to search movies');
-  } finally {
-    setSearching(false);
-  }
-};
+    try {
+      setSearching(true);
+      const results = await searchMoviesByTitle(searchQuery, 'us');
+      setSearchResults(results);
+    } catch (err: any) {
+      console.error('Error searching movies:', err);
+      Alert.alert('Error', 'Failed to search movies');
+    } finally {
+      setSearching(false);
+    }
+  };
 
   const toggleMedia = (mediaId: string) => {
     setSelectedMedias((prev) => {
@@ -84,7 +110,7 @@ export default function FavoriteMediasScreen({ route, navigation }: Props) {
     });
   };
 
-  const handleContinue = async () => {
+  const handleSave = async () => {
     if (selectedMedias.length === 0) {
       Alert.alert('Select Movie/Show', 'Please select at least one to continue');
       return;
@@ -93,21 +119,22 @@ export default function FavoriteMediasScreen({ route, navigation }: Props) {
     try {
       setLoading(true);
 
-      const userId = route.params?.userId || UserManager.getCurrentUserId();
-      
       if (!userId) {
         Alert.alert('Error', 'User session not found');
         return;
       }
 
-      // Save favorite titles to user preferences
       await UserService.updatePreferences(userId, {
         favoriteMedia: selectedMedias,
       });
 
       console.log('Favorite movies/shows saved successfully:', selectedMedias);
 
-      // Navigate to home or next screen
+      if (editMode) {
+        navigation.navigate("Profile");
+        return;
+      }
+
       Alert.alert(
         'Setup Complete!',
         'Your preferences have been saved.',
@@ -173,32 +200,29 @@ export default function FavoriteMediasScreen({ route, navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>←</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Title */}
       <View style={styles.titleContainer}>
         <Text style={styles.title}>What are your favorite movies/shows?</Text>
-        <Text style={styles.subtitle}>Select one or more to continue</Text>
+        <Text style={styles.subtitle}>
+          {editMode ? "Update your selection" : "Select one or more to continue"}
+        </Text>
       </View>
 
-      {/* Continue Button */}
+      {/* Continue / Update Button */}
       <TouchableOpacity
         style={[
           styles.continueButton,
           (selectedMedias.length === 0 || loading) && styles.continueButtonDisabled,
         ]}
-        onPress={handleContinue}
+        onPress={handleSave}
         disabled={selectedMedias.length === 0 || loading}
       >
         {loading ? (
           <ActivityIndicator color="#000" />
         ) : (
-          <Text style={styles.continueButtonText}>Continue</Text>
+          <Text style={styles.continueButtonText}>
+            {editMode ? "Update" : "Continue"}
+          </Text>
         )}
       </TouchableOpacity>
 
@@ -214,7 +238,7 @@ export default function FavoriteMediasScreen({ route, navigation }: Props) {
         onChangeText={(text) => {
           setSearchQuery(text);
           if (!text.trim()) {
-            setSearchResults(initialMedia); // Show popular when cleared
+            setSearchResults(initialMedia);
           }
         }}
         onSubmitEditing={handleSearch}
@@ -240,166 +264,10 @@ export default function FavoriteMediasScreen({ route, navigation }: Props) {
       ) : (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>
-            {searchQuery ? 'No results found' : 'Search for medias or shows'}
+            {searchQuery ? 'No results found' : 'Search for movies or shows'}
           </Text>
         </View>
       )}
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#1a1a1a',
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  backButton: {
-    fontSize: 32,
-    color: '#F5C518',
-    fontWeight: 'bold',
-  },
-  titleContainer: {
-    paddingHorizontal: 30,
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#aaa',
-    textAlign: 'center',
-  },
-  continueButton: {
-    backgroundColor: '#F5C518',
-    paddingVertical: 15,
-    paddingHorizontal: 40,
-    borderRadius: 25,
-    alignSelf: 'center',
-    marginVertical: 10,
-    minWidth: 200,
-  },
-  continueButtonDisabled: {
-    backgroundColor: '#555',
-  },
-  continueButtonText: {
-    color: '#000',
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#333',
-    marginHorizontal: 30,
-    marginVertical: 15,
-  },
-  searchContainer: {
-    paddingHorizontal: 30,
-    marginBottom: 20,
-  },
-  searchInput: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    color: '#fff',
-    fontSize: 16,
-  },
-  mediaGrid: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  row: {
-    justifyContent: 'space-between',
-    marginBottom: 15,
-  },
-  mediaCard: {
-    width: '48%',
-    borderRadius: 10,
-    overflow: 'hidden',
-    backgroundColor: '#2a2a2a',
-    borderWidth: 3,
-    borderColor: 'transparent',
-  },
-  mediaCardSelected: {
-    borderColor: '#F5C518',
-  },
-  posterImage: {
-    width: '100%',
-    aspectRatio: 2 / 3,
-  },
-  placeholderPoster: {
-    width: '100%',
-    aspectRatio: 2 / 3,
-    backgroundColor: '#333',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholderText: {
-    color: '#666',
-    fontSize: 14,
-  },
-  selectedOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(245, 197, 24, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkmark: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#F5C518',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkmarkText: {
-    fontSize: 30,
-    color: '#000',
-    fontWeight: 'bold',
-  },
-  mediaInfo: {
-    padding: 10,
-  },
-  mediaTitle: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  mediaYear: {
-    color: '#aaa',
-    fontSize: 12,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 15,
-  },
-  loadingText: {
-    color: '#aaa',
-    fontSize: 16,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  emptyText: {
-    color: '#666',
-    fontSize: 16,
-    textAlign: 'center',
-  },
-});
