@@ -158,7 +158,8 @@ export default function LobbyWaitingScreen({ navigation, route }: Props) {
    * Copy room code to clipboard
    */
   const copyRoomCode = () => {
-    Clipboard.setString(sessionId);
+    const roomCode = session?.roomCode || 'Unknown';
+    Clipboard.setString(roomCode);
     Alert.alert('Copied!', 'Room code copied to clipboard');
   };
 
@@ -300,10 +301,10 @@ export default function LobbyWaitingScreen({ navigation, route }: Props) {
           <TouchableOpacity 
             style={styles.roomCodeBox}
             onPress={copyRoomCode}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
-            <Text style={styles.roomCodeText}>{sessionId}</Text>
-            <Text style={styles.copyHint}> Tap to copy</Text>
+            <Text style={styles.roomCodeText}>{session?.roomCode || 'Loading...'}</Text>
+            <Text style={styles.copyHint}>Tap to copy</Text>
           </TouchableOpacity>
         </View>
 

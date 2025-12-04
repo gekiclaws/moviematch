@@ -130,8 +130,22 @@ export const SessionService = {
     return session.userIds.length > 0 ? session.userIds[0] : null;
   },
 
+  async getHostByRoomCode(roomCode: string): Promise<string | null> {
+    const session = await this.getByRoomCode(roomCode);
+    if (!session) return null;
+
+    return session.userIds.length > 0 ? session.userIds[0] : null;
+  },
+
   async getStatus(sessionId: string): Promise<Session['sessionStatus'] | null> {
     const session = await this.get(sessionId);
+    if (!session) return null;
+    
+    return session.sessionStatus;
+  },
+
+  async getStatusByRoomCode(roomCode: string): Promise<Session['sessionStatus'] | null> {
+    const session = await this.getByRoomCode(roomCode);
     if (!session) return null;
     
     return session.sessionStatus;

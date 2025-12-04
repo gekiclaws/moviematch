@@ -45,9 +45,9 @@ export default function JoinRoomScreen({ navigation }: Props) {
         return;
       }
 
-      // Check if session exists
+      // Check if session exists by room code
       console.log(roomCode);
-      const session = await SessionService.get(roomCode.trim());
+      const session = await SessionService.getByRoomCode(roomCode.trim());
       if (!session) {
         Alert.alert('Error', 'Room code not found. Please check and try again.');
         setIsLoading(false);
@@ -72,16 +72,17 @@ export default function JoinRoomScreen({ navigation }: Props) {
       await SessionService.joinSession(roomCode.trim(), currentUserId);
 
       // Get updated session data
-      const updatedSession = await SessionService.get(roomCode.trim());
+      const updatedSession = await SessionService.get(session.id);
 
       // Get host user information
       const hostUser = await UserService.get(session.userIds[0]);
 
       // Navigate to SuccessfullyJoined screen
       navigation.navigate('SuccessfullyJoined', {
-        sessionId: roomCode.trim(),
+        sessionId: session.id,
         userId: currentUserId,
         userName: `${currentUserId}`,
+        roomCode: roomCode.trim(),
         session: updatedSession || undefined,
       });
 
@@ -110,8 +111,9 @@ export default function JoinRoomScreen({ navigation }: Props) {
    * Handle room code input changes
    */
   const handleRoomCodeChange = (text: string) => {
-    // Remove spaces but preserve original case
-    setRoomCode(text.replace(/\s+/g, ''));
+    // Only allow numbers and limit to 6 digits
+    const numericText = text.replace(/[^0-9]/g, '').slice(0, 6);
+    setRoomCode(numericText);
   };
 
   return (
@@ -137,11 +139,12 @@ export default function JoinRoomScreen({ navigation }: Props) {
               style={styles.textInput}
               value={roomCode}
               onChangeText={handleRoomCodeChange}
-              placeholder="Enter room code here..."
+              placeholder="Enter 6-digit room code..."
               placeholderTextColor="#95a5a6"
               autoCapitalize="none"
               autoCorrect={false}
-              maxLength={20}
+              keyboardType="numeric"
+              maxLength={6}
               editable={!isLoading}
             />
             

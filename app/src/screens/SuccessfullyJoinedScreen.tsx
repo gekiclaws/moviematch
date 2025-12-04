@@ -10,7 +10,7 @@ import { SuccessfullyJoinedStyles as styles } from '../styles/SuccessfullyJoined
 type Props = StackScreenProps<RootStackParamList, 'SuccessfullyJoined'>;
 
 export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { sessionId, userName, userId } = route.params;
+  const { sessionId, userName, userId, roomCode } = route.params;
   
   // State management
   const [session, setSession] = useState<Session | null>(null);
@@ -123,6 +123,13 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
   };
 
   /**
+   * Handle manual navigation button press
+   */
+  const handleManualNavigation = () => {
+    navigateToMovieMatching();
+  };
+
+  /**
    * Get status display text based on session state
    */
   const getStatusText = () => {
@@ -193,7 +200,7 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
         <View style={styles.infoContainer}>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Room Code:</Text>
-            <Text style={styles.infoValue}>{sessionId}</Text>
+            <Text style={styles.infoValue}>{roomCode || session?.roomCode || 'Loading...'}</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Your Name:</Text>
@@ -239,7 +246,7 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
           <View style={styles.buttonContainer}>
             <TouchableOpacity 
               style={styles.goToMatchingButton}
-              onPress={navigateToMovieMatching}
+              onPress={handleManualNavigation}
               activeOpacity={0.8}
             >
               <Text style={styles.goToMatchingButtonText}>
