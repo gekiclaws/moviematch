@@ -54,13 +54,13 @@ export const SwipeService = {
         createdAt: Date.now(),
       };
 
+      console.log('Constructed swipe object:', swipe);
       const sessionRef = doc(db, 'sessions', sessionId);
       
       await updateDoc(sessionRef, {
         swipes: arrayUnion(swipe),
       });
-
-      console.log('Swipe added:', swipe);
+      
     } catch (error) {
       console.error('Error adding swipe:', error);
       throw new Error('Failed to save swipe decision');
