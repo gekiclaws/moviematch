@@ -13,6 +13,7 @@ const staticMovies: Media[] = [
     releaseYear: 2020,
     runtime: 120,
     poster: '',
+    trailerUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
   },
 ];
 
