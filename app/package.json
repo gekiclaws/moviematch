@@ -25,6 +25,7 @@
     "react-native-dotenv": "^3.4.11",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
+    "react-native-webview": "^13.12.2",
     "streaming-availability": "^4.4.0"
   },
   "devDependencies": {

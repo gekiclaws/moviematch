@@ -1,5 +1,5 @@
 // src/components/MovieCard.tsx
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import type { Media } from '../types/media';
+import { TrailerPlayer } from './TrailerPlayer';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 120;
@@ -31,6 +32,7 @@ export default function MovieCard({
   isTopCard,
 }: MovieCardProps) {
   const position = useRef(new Animated.ValueXY()).current;
+  const [showTrailer, setShowTrailer] = useState(false);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -151,6 +153,21 @@ export default function MovieCard({
             {movie.overview}
           </Text>
           <Text style={styles.tapHint}>Tap to read more</Text>
+          <View style={styles.trailerSection}>
+            {showTrailer ? (
+              <TrailerPlayer trailerUrl={movie.trailerUrl} />
+            ) : (
+              !!movie.trailerUrl && (
+                <TouchableOpacity
+                  style={styles.trailerButton}
+                  onPress={() => setShowTrailer(true)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.trailerButtonText}>Watch Trailer</Text>
+                </TouchableOpacity>
+              )
+            )}
+          </View>
         </View>
       </TouchableOpacity>
     </Animated.View>
@@ -228,5 +245,21 @@ const styles = StyleSheet.create({
     color: '#aaa',
     fontSize: 12,
     fontStyle: 'italic',
-  }
+  },
+  trailerSection: {
+    marginTop: 8,
+    gap: 8,
+  },
+  trailerButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#3498db',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  trailerButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });
