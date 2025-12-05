@@ -519,6 +519,22 @@ describe('SessionService', () => {
             decision: 'dislike' as const,
             createdAt: 3,
           },
+          {
+            id: 'swipe-4',
+            userId: 'host-user',
+            mediaId: 'movie-3',
+            mediaTitle: 'Movie 3',
+            decision: 'dislike' as const,
+            createdAt: 4,
+          },
+          {
+            id: 'swipe-5',
+            userId: 'guest-user',
+            mediaId: 'movie-4',
+            mediaTitle: 'Movie 4',
+            decision: 'like' as const,
+            createdAt: 5,
+          },
         ],
       };
 
@@ -539,12 +555,12 @@ describe('SessionService', () => {
       });
 
       const matchedTitles = (updatePayload as any).matchedTitles as Array<{ id: string; title: string }>;
-      const fallbackIds = ['tt1375666', 'tt0114369', 'tt0169547', 'tt0137523', 'tt0109830'];
+      const swipeIds = session.swipes.map((swipe) => swipe.mediaId);
 
       expect(Array.isArray(matchedTitles)).toBe(true);
       expect(matchedTitles).toHaveLength(3);
-      expect(matchedTitles.every((match) => fallbackIds.includes(match.id))).toBe(true);
-      expect((updatePayload as any).matchCertainty).toBeCloseTo(0.5);
+      expect(matchedTitles.every((match) => swipeIds.includes(match.id))).toBe(true);
+      expect(matchedTitles.every((match) => match.certainty === undefined)).toBe(true);
     });
 
     it('throws if user is not part of session', async () => {

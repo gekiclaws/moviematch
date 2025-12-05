@@ -44,6 +44,7 @@ const RecommendationScreen: React.FC<Props> = ({ route, navigation }) => {
   }, [sessionId]);
 
   const matchedTitles = session?.matchedTitles ?? [];
+  const isFallback = matchedTitles.length > 0 && matchedTitles.every((title) => title.certainty === undefined);
 
   const handleWatchTogether = () => {
     Alert.alert('Watch Together', 'Feature coming soon!');
@@ -70,6 +71,9 @@ const RecommendationScreen: React.FC<Props> = ({ route, navigation }) => {
         <View style={styles.cardContent}>
           <Text style={styles.cardTitle}>{item.title}</Text>
           <Text style={styles.cardSubtext}>{streamingText}</Text>
+          {typeof item.certainty === 'number' && (
+            <Text style={styles.certaintyText}>{Math.round(item.certainty * 100)}% certainty</Text>
+          )}
         </View>
       </View>
     );
@@ -105,7 +109,9 @@ const RecommendationScreen: React.FC<Props> = ({ route, navigation }) => {
         <Text style={styles.headerTitle}>You matched!</Text>
         <Text style={styles.headerSubtitle}>
           {matchedTitles.length > 0
-            ? 'Here are the titles you both loved.'
+            ? isFallback
+              ? "We couldn’t determine a strong match, but here are some movies our other users have enjoyed."
+              : "We think you'll enjoy these titles."
             : 'No mutual matches yet.'}
         </Text>
       </View>
@@ -193,6 +199,11 @@ const styles = StyleSheet.create({
   cardSubtext: {
     fontSize: 14,
     color: '#d1d5db',
+  },
+  certaintyText: {
+    marginTop: 6,
+    fontSize: 13,
+    color: '#c084fc',
   },
   centerContent: {
     flex: 1,

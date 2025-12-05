@@ -41,34 +41,6 @@ type CandidateSelectionMode = 'union' | 'strict' | 'hybrid';
 const CANDIDATE_SELECTION_MODE: CandidateSelectionMode = 'hybrid';
 const MAX_RESULTS = 3;
 
-const FALLBACK_RECOMMENDATIONS: MatchedTitle[] = [
-  {
-    id: 'tt1375666',
-    title: 'Inception',
-    streamingServices: ['Netflix'],
-  },
-  {
-    id: 'tt0114369',
-    title: 'Se7en',
-    streamingServices: ['Prime Video'],
-  },
-  {
-    id: 'tt0169547',
-    title: 'American Beauty',
-    streamingServices: ['Max'],
-  },
-  {
-    id: 'tt0137523',
-    title: 'Fight Club',
-    streamingServices: ['Hulu'],
-  },
-  {
-    id: 'tt0109830',
-    title: 'Forrest Gump',
-    streamingServices: ['Paramount+'],
-  },
-];
-
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 const hashString = (value: string, seed = 0) => {
@@ -193,7 +165,12 @@ const selectCandidateIds = (swipes: Swipe[], userIds: string[]): Set<string> => 
 
 const dotProduct = (a: number[], b: number[]) => a.reduce((sum, value, index) => sum + value * b[index], 0);
 
-const buildMatchedTitle = (mediaId: string, swipes: Swipe[], similarityScore?: number): MatchedTitle => {
+const buildMatchedTitle = (
+  mediaId: string,
+  swipes: Swipe[],
+  similarityScore?: number,
+  certainty?: number
+): MatchedTitle => {
   const swipeWithMeta = swipes.find((swipe) => swipe.mediaId === mediaId && swipe.decision === 'like');
 
   const match: MatchedTitle = {
@@ -213,18 +190,42 @@ const buildMatchedTitle = (mediaId: string, swipes: Swipe[], similarityScore?: n
     match.similarityScore = similarityScore;
   }
 
+  if (typeof certainty === 'number') {
+    match.certainty = certainty;
+  }
+
   return match;
 };
 
-const getRandomFallbackMatches = (count: number): MatchedTitle[] => {
-  const shuffled = [...FALLBACK_RECOMMENDATIONS];
+const shuffle = <T>(items: T[]) => {
+  const shuffled = [...items];
 
   for (let i = shuffled.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
 
-  return shuffled.slice(0, count);
+  return shuffled;
+};
+
+const getRandomFallbackMatches = (swipes: Swipe[], count: number): MatchedTitle[] => {
+  const uniqueByMedia = new Map<string, Swipe>();
+
+  swipes.forEach((swipe) => {
+    if (!uniqueByMedia.has(swipe.mediaId)) {
+      uniqueByMedia.set(swipe.mediaId, swipe);
+    }
+  });
+
+  const candidates = Array.from(uniqueByMedia.values());
+
+  if (candidates.length === 0) {
+    return [];
+  }
+
+  const shuffled = shuffle(candidates);
+
+  return shuffled.slice(0, count).map((swipe) => buildMatchedTitle(swipe.mediaId, swipes));
 };
 
 const computeScoreStats = (scores: number[]) => {
@@ -244,8 +245,8 @@ const computeScoreStats = (scores: number[]) => {
   return { top, mean, std };
 };
 
-const computeCertainty = (stats: { top: number; mean: number; std: number }) => {
-  const raw = (stats.top - stats.mean) / stats.std;
+const computeCertaintyForScore = (score: number, stats: { mean: number; std: number }) => {
+  const raw = (score - stats.mean) / stats.std;
   const sigmoid = 1 / (1 + Math.exp(-raw));
   const certainty = clamp(0.5 + 0.5 * sigmoid, 0.5, 1);
 
@@ -266,15 +267,13 @@ const computeVectorMatches = (swipes: Swipe[], userIds: string[]) => {
   console.log('[VectorMatching] Metrics', JSON.stringify(baseMetrics));
 
   const useFallback = (reason: string, stats?: { top: number; mean: number; std: number }) => {
-    const fallbackMatches = getRandomFallbackMatches(MAX_RESULTS);
-    const certainty = 0.5;
+    const fallbackMatches = getRandomFallbackMatches(swipes, MAX_RESULTS);
 
     console.log(
       '[VectorMatching] Fallback',
       JSON.stringify({
         reason,
         fallbackUsed: true,
-        certainty,
         stats,
         topMatches: fallbackMatches.map(({ id }) => id),
       })
@@ -284,7 +283,6 @@ const computeVectorMatches = (swipes: Swipe[], userIds: string[]) => {
       matchedTitles: fallbackMatches,
       algorithmVersion: MATCHING_ALGORITHM_VERSION,
       fallback: true,
-      certainty,
     };
   };
 
@@ -311,8 +309,6 @@ const computeVectorMatches = (swipes: Swipe[], userIds: string[]) => {
     return useFallback('invalid_score_distribution');
   }
 
-  const certainty = computeCertainty(stats);
-
   const orderedMatches = scoredMatches
     .sort((a, b) => {
       if (b.score === a.score) {
@@ -326,7 +322,6 @@ const computeVectorMatches = (swipes: Swipe[], userIds: string[]) => {
     '[VectorMatching] Ranking',
     JSON.stringify({
       topScores: orderedMatches.map(({ mediaId, score }) => ({ mediaId, score: Number(score.toFixed(4)) })),
-      certainty: Number(certainty.toFixed(4)),
       stats: {
         s1: Number(stats.top.toFixed(4)),
         sMean: Number(stats.mean.toFixed(4)),
@@ -337,10 +332,11 @@ const computeVectorMatches = (swipes: Swipe[], userIds: string[]) => {
   );
 
   return {
-    matchedTitles: orderedMatches.map(({ mediaId, score }) => buildMatchedTitle(mediaId, swipes, score)),
+    matchedTitles: orderedMatches.map(({ mediaId, score }) =>
+      buildMatchedTitle(mediaId, swipes, score, computeCertaintyForScore(score, stats))
+    ),
     algorithmVersion: MATCHING_ALGORITHM_VERSION,
     fallback: false,
-    certainty,
   };
 };
 
@@ -509,24 +505,21 @@ export const SessionService = {
             return {
               matchedTitles: result.matchedTitles,
               algorithmVersion: result.algorithmVersion,
-              certainty: result.certainty,
             };
           } catch (error) {
             console.error('[VectorMatching] Error', error instanceof Error ? error.message : error);
             return {
-              matchedTitles: getRandomFallbackMatches(MAX_RESULTS),
+              matchedTitles: getRandomFallbackMatches(swipes, MAX_RESULTS),
               algorithmVersion: MATCHING_ALGORITHM_VERSION,
-              certainty: 0.5,
             };
           }
         };
 
-        const { matchedTitles, algorithmVersion, certainty } = computeMatches();
+        const { matchedTitles, algorithmVersion } = computeMatches();
 
         updates.sessionStatus = 'complete';
         updates.matchedTitles = matchedTitles;
         updates.matchingAlgorithmVersion = algorithmVersion;
-        updates.matchCertainty = certainty;
       }
 
       transaction.update(sessionRef, updates);
