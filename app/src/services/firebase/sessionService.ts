@@ -13,131 +13,14 @@ import {
 import { db } from './index';
 import type { MatchedTitle, PlayerReadiness, Session } from '../../types/session';
 import type { Swipe } from '../../types/swipe';
+import { buildConsensusVector, buildUserPreferenceVector, rankCandidates } from '../matching/embedding';
 
 const MATCHING_ALGORITHM_VERSION = 2;
-const EMBEDDING_VERSION = 1;
-
-const GENRE_DIM = 16;
-const DIRECTOR_DIM = 16;
-const CAST_DIM = 32;
-const SCALAR_DIM = 3; // release year, runtime, rating
-const EMBED_DIM = GENRE_DIM + DIRECTOR_DIM + CAST_DIM + SCALAR_DIM;
-
-const GENRE_START = 0;
-const RELEASE_YEAR_INDEX = GENRE_START + GENRE_DIM;
-const RUNTIME_INDEX = RELEASE_YEAR_INDEX + 1;
-const RATING_INDEX = RUNTIME_INDEX + 1;
-const DIRECTOR_START = RATING_INDEX + 1;
-const CAST_START = DIRECTOR_START + DIRECTOR_DIM;
-
-type PreferenceVector = {
-  vector: number[];
-  magnitude: number;
-  isZero: boolean;
-};
 
 type CandidateSelectionMode = 'union' | 'strict' | 'hybrid';
 
 const CANDIDATE_SELECTION_MODE: CandidateSelectionMode = 'hybrid';
 const MAX_RESULTS = 3;
-
-const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
-
-const hashString = (value: string, seed = 0) => {
-  let hash = seed + EMBEDDING_VERSION * 31;
-
-  for (let i = 0; i < value.length; i++) {
-    hash = (hash << 5) - hash + value.charCodeAt(i);
-    hash |= 0; // Convert to 32bit integer
-  }
-
-  return Math.abs(hash);
-};
-
-const normalizeValue = (value: number | undefined, min: number, max: number) => {
-  if (typeof value !== 'number' || Number.isNaN(value)) {
-    return 0;
-  }
-
-  const clamped = clamp(value, min, max);
-  return (clamped - min) / (max - min);
-};
-
-const addHashedMultiHot = (
-  values: string[] | undefined,
-  start: number,
-  size: number,
-  vector: number[],
-  seed: number
-) => {
-  if (!values || values.length === 0) {
-    return;
-  }
-
-  values.forEach((item) => {
-    const index = start + (hashString(item, seed) % size);
-    vector[index] = 1;
-  });
-};
-
-const buildEmbeddingFromSwipe = (swipe: Swipe): number[] => {
-  const embedding = new Array(EMBED_DIM).fill(0);
-
-  addHashedMultiHot(swipe.genres, GENRE_START, GENRE_DIM, embedding, 11);
-
-  embedding[RELEASE_YEAR_INDEX] = normalizeValue(swipe.releaseYear, 1900, 2025);
-  embedding[RUNTIME_INDEX] = normalizeValue(swipe.runtime, 60, 240);
-  embedding[RATING_INDEX] = normalizeValue(swipe.rating, 0, 10);
-
-  addHashedMultiHot(swipe.directors, DIRECTOR_START, DIRECTOR_DIM, embedding, 23);
-  addHashedMultiHot(swipe.cast, CAST_START, CAST_DIM, embedding, 37);
-
-  return embedding;
-};
-
-const vectorMagnitude = (vector: number[]) => Math.sqrt(vector.reduce((sum, value) => sum + value * value, 0));
-
-const normalizeVector = (vector: number[]): PreferenceVector => {
-  const magnitude = vectorMagnitude(vector);
-
-  if (magnitude === 0) {
-    return { vector: new Array(vector.length).fill(0), magnitude, isZero: true };
-  }
-
-  return {
-    vector: vector.map((value) => value / magnitude),
-    magnitude,
-    isZero: false,
-  };
-};
-
-const buildUserPreferenceVector = (swipes: Swipe[], userId: string): PreferenceVector => {
-  const userSwipes = swipes.filter((swipe) => swipe.userId === userId);
-  const aggregate = new Array(EMBED_DIM).fill(0);
-
-  userSwipes.forEach((swipe) => {
-    const direction = swipe.decision === 'like' ? 1 : -1;
-    const embedding = buildEmbeddingFromSwipe(swipe);
-
-    embedding.forEach((value, index) => {
-      aggregate[index] += value * direction;
-    });
-  });
-
-  return normalizeVector(aggregate);
-};
-
-const buildConsensusVector = (vectors: PreferenceVector[]): PreferenceVector => {
-  const aggregate = new Array(EMBED_DIM).fill(0);
-
-  vectors.forEach(({ vector }) => {
-    vector.forEach((value, index) => {
-      aggregate[index] += value;
-    });
-  });
-
-  return normalizeVector(aggregate);
-};
 
 const selectCandidateIds = (swipes: Swipe[], userIds: string[]): Set<string> => {
   const userLikeSets = userIds.map((id) =>
@@ -162,8 +45,6 @@ const selectCandidateIds = (swipes: Swipe[], userIds: string[]): Set<string> => 
 
   return union;
 };
-
-const dotProduct = (a: number[], b: number[]) => a.reduce((sum, value, index) => sum + value * b[index], 0);
 
 const buildMatchedTitle = (
   mediaId: string,
@@ -228,31 +109,6 @@ const getRandomFallbackMatches = (swipes: Swipe[], count: number): MatchedTitle[
   return shuffled.slice(0, count).map((swipe) => buildMatchedTitle(swipe.mediaId, swipes));
 };
 
-const computeScoreStats = (scores: number[]) => {
-  if (scores.length === 0) {
-    return null;
-  }
-
-  const mean = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-  const variance = scores.reduce((sum, score) => sum + (score - mean) ** 2, 0) / scores.length;
-  const std = Math.sqrt(variance);
-  const top = Math.max(...scores);
-
-  if (!Number.isFinite(mean) || !Number.isFinite(std) || std <= 0) {
-    return null;
-  }
-
-  return { top, mean, std };
-};
-
-const computeCertaintyForScore = (score: number, stats: { mean: number; std: number }) => {
-  const raw = (score - stats.mean) / stats.std;
-  const sigmoid = 1 / (1 + Math.exp(-raw));
-  const certainty = clamp(0.5 + 0.5 * sigmoid, 0.5, 1);
-
-  return certainty;
-};
-
 const computeVectorMatches = (swipes: Swipe[], userIds: string[]) => {
   const userVectors = userIds.map((id) => buildUserPreferenceVector(swipes, id));
   const consensusVector = buildConsensusVector(userVectors);
@@ -268,12 +124,14 @@ const computeVectorMatches = (swipes: Swipe[], userIds: string[]) => {
 
   const useFallback = (reason: string, stats?: { top: number; mean: number; std: number }) => {
     const fallbackMatches = getRandomFallbackMatches(swipes, MAX_RESULTS);
+    const certainty = 0.5;
 
     console.log(
       '[VectorMatching] Fallback',
       JSON.stringify({
         reason,
         fallbackUsed: true,
+        certainty,
         stats,
         topMatches: fallbackMatches.map(({ id }) => id),
       })
@@ -283,6 +141,7 @@ const computeVectorMatches = (swipes: Swipe[], userIds: string[]) => {
       matchedTitles: fallbackMatches,
       algorithmVersion: MATCHING_ALGORITHM_VERSION,
       fallback: true,
+      certainty,
     };
   };
 
@@ -290,38 +149,17 @@ const computeVectorMatches = (swipes: Swipe[], userIds: string[]) => {
     return useFallback('empty_candidates_or_zero_consensus');
   }
 
-  const seenOrder = new Map<string, number>();
-  swipes.forEach((swipe, index) => {
-    if (!seenOrder.has(swipe.mediaId)) {
-      seenOrder.set(swipe.mediaId, index);
-    }
-  });
+  const { ranked, stats, sessionCertainty } = rankCandidates(swipes, consensusVector, candidateIds, MAX_RESULTS);
 
-  const scoredMatches = candidateIds.map((mediaId) => {
-    const swipe = swipes.find((s) => s.mediaId === mediaId);
-    const embedding = normalizeVector(buildEmbeddingFromSwipe(swipe ?? ({ mediaId } as Swipe)));
-    const score = embedding.isZero ? 0 : dotProduct(consensusVector.vector, embedding.vector);
-    return { mediaId, score };
-  });
-
-  const stats = computeScoreStats(scoredMatches.map((match) => match.score));
-  if (!stats) {
-    return useFallback('invalid_score_distribution');
+  if (!stats || sessionCertainty === null) {
+    return useFallback('invalid_score_distribution', stats ?? undefined);
   }
-
-  const orderedMatches = scoredMatches
-    .sort((a, b) => {
-      if (b.score === a.score) {
-        return (seenOrder.get(a.mediaId) ?? 0) - (seenOrder.get(b.mediaId) ?? 0);
-      }
-      return b.score - a.score;
-    })
-    .slice(0, MAX_RESULTS);
 
   console.log(
     '[VectorMatching] Ranking',
     JSON.stringify({
-      topScores: orderedMatches.map(({ mediaId, score }) => ({ mediaId, score: Number(score.toFixed(4)) })),
+      topScores: ranked.map(({ mediaId, score }) => ({ mediaId, score: Number(score.toFixed(4)) })),
+      certainty: Number(sessionCertainty.toFixed(4)),
       stats: {
         s1: Number(stats.top.toFixed(4)),
         sMean: Number(stats.mean.toFixed(4)),
@@ -332,11 +170,10 @@ const computeVectorMatches = (swipes: Swipe[], userIds: string[]) => {
   );
 
   return {
-    matchedTitles: orderedMatches.map(({ mediaId, score }) =>
-      buildMatchedTitle(mediaId, swipes, score, computeCertaintyForScore(score, stats))
-    ),
+    matchedTitles: ranked.map(({ mediaId, score, certainty }) => buildMatchedTitle(mediaId, swipes, score, certainty)),
     algorithmVersion: MATCHING_ALGORITHM_VERSION,
     fallback: false,
+    certainty: sessionCertainty,
   };
 };
 
@@ -505,21 +342,24 @@ export const SessionService = {
             return {
               matchedTitles: result.matchedTitles,
               algorithmVersion: result.algorithmVersion,
+              certainty: result.certainty,
             };
           } catch (error) {
             console.error('[VectorMatching] Error', error instanceof Error ? error.message : error);
             return {
               matchedTitles: getRandomFallbackMatches(swipes, MAX_RESULTS),
               algorithmVersion: MATCHING_ALGORITHM_VERSION,
+              certainty: 0.5,
             };
           }
         };
 
-        const { matchedTitles, algorithmVersion } = computeMatches();
+        const { matchedTitles, algorithmVersion, certainty } = computeMatches();
 
         updates.sessionStatus = 'complete';
         updates.matchedTitles = matchedTitles;
         updates.matchingAlgorithmVersion = algorithmVersion;
+        updates.matchCertainty = certainty;
       }
 
       transaction.update(sessionRef, updates);
