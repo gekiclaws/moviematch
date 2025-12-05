@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import { createMatchingService } from './matchingService';
-import type { Swipe } from '../../types/swipe';
+import { createMatchingService } from '../../../../services/matching/matchingService';
+import type { Swipe } from '../../../../types/swipe';
 
 // ---------------------------------------------------------------------------
 // Helpers

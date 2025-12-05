@@ -1,7 +1,7 @@
 // app/src/services/matching/embedding.test.ts
 import { describe, it, expect } from 'vitest';
 
-import type { Swipe } from '../../types/swipe';
+import type { Swipe } from '../../../../types/swipe';
 import {
   normalizeValue,
   addHashedMultiHot,
@@ -13,7 +13,7 @@ import {
   computeScoreStats,
   computeCertaintyForScore,
   rankCandidates,
-} from './embedding';
+} from '../../../../services/matching/embedding';
 
 // ---------- deterministic test hash fn ----------
 

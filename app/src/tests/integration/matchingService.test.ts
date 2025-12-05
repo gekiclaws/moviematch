@@ -2,7 +2,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import { MatchingService } from './matchingService';
+import { MatchingService } from '../../services/matching/matchingService';
 import type { Swipe } from '../../types/swipe';
 
 // ---------------------------------------------------------------------------

@@ -45,7 +45,7 @@ import {
   searchMoviesByTitle,
   getPopularMovies,
   getAvailableGenres,
-} from './mediaApiService';
+} from '../../../../services/api/mediaApiService';
 
 describe('MovieApi', () => {
   beforeEach(() => {
