@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-import type { Session } from '../../types/session';
+import type { Session } from '../../../../types/session';
 
 const {
   addDocMock,
@@ -35,13 +34,11 @@ vi.mock('firebase/firestore', () => ({
   updateDoc: updateDocMock,
 }));
 
-vi.mock('./index', () => ({
+vi.mock('../../../../services/firebase/index', () => ({
   db: fakeDb,
 }));
 
-// Import after mocks so that SessionService uses the mocked Firestore methods.
-// eslint-disable-next-line import/first
-import { SessionService } from './sessionService';
+import { SessionService } from '../../../../services/firebase/sessionService';
 
 const baseSession: Omit<Session, 'id'> = {
   userIds: ['user-1'],
