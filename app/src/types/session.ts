@@ -9,6 +9,7 @@ export interface MatchedTitle {
   title: string;
   posterUrl?: string;
   streamingServices?: string[];
+  similarityScore?: number;
 }
 
 export interface Session {
@@ -20,6 +21,8 @@ export interface Session {
   favoriteTitles: string[];
   swipes: Swipe[];
   matchedTitles?: MatchedTitle[];
+  matchingAlgorithmVersion?: number;
+  matchCertainty?: number;
   createdAt: number;
   sessionStatus: SessionStatus;
   playerStatus: Record<string, PlayerReadiness>;

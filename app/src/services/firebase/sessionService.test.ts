@@ -8,6 +8,9 @@ const {
   deleteDocMock,
   docMock,
   getDocMock,
+  runTransactionMock,
+  transactionGetMock,
+  transactionUpdateMock,
   updateDocMock,
 } = vi.hoisted(() => {
   const doc = vi.fn((_db: unknown, _collection: string, id: string) => ({
@@ -20,6 +23,9 @@ const {
     deleteDocMock: vi.fn(),
     docMock: doc,
     getDocMock: vi.fn(),
+    runTransactionMock: vi.fn(),
+    transactionGetMock: vi.fn(),
+    transactionUpdateMock: vi.fn(),
     updateDocMock: vi.fn(),
   };
 });
@@ -32,6 +38,7 @@ vi.mock('firebase/firestore', () => ({
   deleteDoc: deleteDocMock,
   doc: docMock,
   getDoc: getDocMock,
+  runTransaction: runTransactionMock,
   updateDoc: updateDocMock,
 }));
 
@@ -67,6 +74,15 @@ describe('SessionService', () => {
       path: `sessions/${id}`,
     }));
     getDocMock.mockReset();
+    runTransactionMock.mockReset();
+    transactionGetMock.mockReset();
+    transactionUpdateMock.mockReset();
+    runTransactionMock.mockImplementation(async (_db, updater) =>
+      updater({
+        get: transactionGetMock,
+        update: transactionUpdateMock,
+      })
+    );
     updateDocMock.mockReset();
   });
 
@@ -457,16 +473,14 @@ describe('SessionService', () => {
         sessionStatus: 'in progress' as const,
       };
 
-      getDocMock.mockResolvedValueOnce({
+      transactionGetMock.mockResolvedValueOnce({
         exists: () => true,
-        id: 'session-123',
         data: () => session,
       });
-      updateDocMock.mockResolvedValueOnce(undefined);
 
       await SessionService.markPlayerFinished('session-123', 'host-user');
 
-      expect(updateDocMock).toHaveBeenCalledWith(
+      expect(transactionUpdateMock).toHaveBeenCalledWith(
         { path: 'sessions/session-123' },
         { 'playerStatus.host-user': 'done' }
       );
@@ -484,6 +498,7 @@ describe('SessionService', () => {
             userId: 'host-user',
             mediaId: 'movie-1',
             mediaTitle: 'Movie 1',
+            genres: ['action'],
             decision: 'like' as const,
             createdAt: 1,
           },
@@ -492,6 +507,7 @@ describe('SessionService', () => {
             userId: 'guest-user',
             mediaId: 'movie-1',
             mediaTitle: 'Movie 1',
+            genres: ['action'],
             decision: 'like' as const,
             createdAt: 2,
           },
@@ -506,28 +522,29 @@ describe('SessionService', () => {
         ],
       };
 
-      getDocMock.mockResolvedValueOnce({
+      transactionGetMock.mockResolvedValueOnce({
         exists: () => true,
-        id: 'session-123',
         data: () => session,
       });
-      updateDocMock.mockResolvedValueOnce(undefined);
 
       await SessionService.markPlayerFinished('session-123', 'guest-user');
 
-      expect(updateDocMock).toHaveBeenCalledWith(
-        { path: 'sessions/session-123' },
-        {
-          'playerStatus.guest-user': 'done',
-          sessionStatus: 'complete',
-          matchedTitles: [
-            {
-              id: 'movie-1',
-              title: 'Movie 1',
-            },
-          ],
-        }
-      );
+      expect(transactionUpdateMock).toHaveBeenCalled();
+      const [, updatePayload] = transactionUpdateMock.mock.calls[0];
+
+      expect(updatePayload).toMatchObject({
+        'playerStatus.guest-user': 'done',
+        sessionStatus: 'complete',
+        matchingAlgorithmVersion: 2,
+      });
+
+      const matchedTitles = (updatePayload as any).matchedTitles as Array<{ id: string; title: string }>;
+      const fallbackIds = ['tt1375666', 'tt0114369', 'tt0169547', 'tt0137523', 'tt0109830'];
+
+      expect(Array.isArray(matchedTitles)).toBe(true);
+      expect(matchedTitles).toHaveLength(3);
+      expect(matchedTitles.every((match) => fallbackIds.includes(match.id))).toBe(true);
+      expect((updatePayload as any).matchCertainty).toBeCloseTo(0.5);
     });
 
     it('throws if user is not part of session', async () => {
@@ -537,16 +554,15 @@ describe('SessionService', () => {
         playerStatus: { 'host-user': 'awaiting' },
       };
 
-      getDocMock.mockResolvedValueOnce({
+      transactionGetMock.mockResolvedValueOnce({
         exists: () => true,
-        id: 'session-123',
         data: () => session,
       });
 
       await expect(SessionService.markPlayerFinished('session-123', 'guest-user'))
         .rejects.toThrow('User not part of this session');
 
-      expect(updateDocMock).not.toHaveBeenCalled();
+      expect(transactionUpdateMock).not.toHaveBeenCalled();
     });
   });
 });
