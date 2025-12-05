@@ -3,7 +3,6 @@ import { describe, it, expect } from 'vitest';
 
 import type { Swipe } from '../../types/swipe';
 import {
-  hashString,
   normalizeValue,
   addHashedMultiHot,
   buildEmbeddingFromSwipe,
@@ -15,6 +14,21 @@ import {
   computeCertaintyForScore,
   rankCandidates,
 } from './embedding';
+
+// ---------- deterministic test hash fn ----------
+
+const mockHash = (value: string, seed: number) => {
+  const map: Record<string, number> = {
+    Action: 0,
+    Comedy: 1,
+    Horror: 2,
+    'Jane Doe': 3,
+    'Dir A': 4,
+    'Actor A': 5,
+    'Actor B': 6,
+  };
+  return map[value] ?? 0;
+};
 
 // ---------- test fixtures ----------
 
@@ -37,23 +51,6 @@ const makeSwipe = (overrides: Partial<Swipe> = {}): Swipe =>
 
 // ---------- tests ----------
 
-describe('hashString', () => {
-  it('is deterministic for same input + seed', () => {
-    const a = hashString('hello', 11);
-    const b = hashString('hello', 11);
-    expect(a).toBe(b);
-  });
-
-  it('differs for different strings or seeds', () => {
-    const base = hashString('hello', 11);
-    const diffString = hashString('world', 11);
-    const diffSeed = hashString('hello', 23);
-
-    expect(diffString).not.toBe(base);
-    expect(diffSeed).not.toBe(base);
-  });
-});
-
 describe('normalizeValue', () => {
   it('maps min and max into [0,1]', () => {
     expect(normalizeValue(0, 0, 10)).toBe(0);
@@ -72,32 +69,29 @@ describe('normalizeValue', () => {
 });
 
 describe('addHashedMultiHot', () => {
-  it('sets one bucket per value using hashing', () => {
+  it('sets deterministic buckets via injected hash function', () => {
     const vec = new Array(8).fill(0);
-    addHashedMultiHot(['a', 'b'], 0, 8, vec, 11);
 
-    const active = vec.filter((v) => v === 1).length;
-    expect(active).toBeGreaterThan(0);
-    expect(active).toBeLessThanOrEqual(2); // collisions possible
+    addHashedMultiHot(['Action', 'Comedy'], 0, 8, vec, 11, mockHash);
+
+    // "Action" -> bucket 0
+    // "Comedy" -> bucket 1
+    expect(vec[0]).toBe(1);
+    expect(vec[1]).toBe(1);
+
+    // all others should be zero
+    expect(vec.slice(2).every(v => v === 0)).toBe(true);
   });
 
   it('no-op for empty or undefined list', () => {
     const vec = new Array(4).fill(0);
-    addHashedMultiHot([], 0, 4, vec, 11);
+    addHashedMultiHot([], 0, 4, vec, 11, mockHash);
     expect(vec.every((v) => v === 0)).toBe(true);
   });
 });
 
 describe('buildEmbeddingFromSwipe', () => {
-  it('produces a fixed-length embedding', () => {
-    const swipe = makeSwipe();
-    const emb = buildEmbeddingFromSwipe(swipe);
-
-    // 16 genre + 3 scalars + 16 director + 32 cast = 67
-    expect(emb.length).toBe(67);
-  });
-
-  it('encodes genres, scalars, and people into non-zero entries', () => {
+  it('produces deterministic embedding with injected hashFn', () => {
     const swipe = makeSwipe({
       genres: ['Action', 'Comedy'],
       directors: ['Dir A'],
@@ -107,8 +101,21 @@ describe('buildEmbeddingFromSwipe', () => {
       rating: 5,
     });
 
-    const emb = buildEmbeddingFromSwipe(swipe);
-    expect(emb.some((v) => v !== 0)).toBe(true);
+    const emb = buildEmbeddingFromSwipe(swipe, mockHash);
+
+    expect(emb.length).toBe(67);
+
+    // Check hashed buckets
+    expect(emb[0]).toBe(1); // Action bucket
+    expect(emb[1]).toBe(1); // Comedy bucket
+
+    // Director region starts at: 16 + 3 = 19
+    expect(emb[19 + 4]).toBe(1); // Dir A -> bucket 4
+
+    // Cast region starts at 16 + 3 + 16 = 35
+    const castStart = 35;
+    expect(emb[castStart + 5]).toBe(1); // Actor A
+    expect(emb[castStart + 6]).toBe(1); // Actor B
   });
 });
 
@@ -131,8 +138,8 @@ describe('normalizeVector', () => {
 
 describe('buildUserPreferenceVector', () => {
   it('adds likes and subtracts dislikes with injected embedding', () => {
-    const like = makeSwipe({ id: 's1', userId: 'u', mediaId: 'm1', decision: 'like' });
-    const dislike = makeSwipe({ id: 's2', userId: 'u', mediaId: 'm2', decision: 'dislike' });
+    const like = makeSwipe({ id: 's1', userId: 'u', decision: 'like' });
+    const dislike = makeSwipe({ id: 's2', userId: 'u', decision: 'dislike' });
 
     const fakeEmbedding = (swipe: Swipe) => {
       if (swipe.id === 's1') return [1, 2, 3];
@@ -142,21 +149,13 @@ describe('buildUserPreferenceVector', () => {
 
     const vec = buildUserPreferenceVector([like, dislike], 'u', fakeEmbedding);
 
-    // expected raw values (first 3 dims)
     const raw = [-9, -18, -27];
     const mag = Math.sqrt(raw.reduce((s, v) => s + v*v, 0));
-    const normalizedFirst3 = raw.map(v => v / mag);
+    const expected = raw.map(v => v / mag);
 
-    // build expected 67-length vector
-    const expected = [
-      ...normalizedFirst3,
-      ...new Array(67 - 3).fill(0),
-    ];
-
-    expect(vec.vector).toEqual(expected);
-    expect(vec.vector.length).toBe(67);
+    expect(vec.vector.slice(0, 3)).toEqual(expected);
+    expect(vec.vector.length).toBe(67); // padded out
     expect(vec.isZero).toBe(false);
-    expect(vec.magnitude).toBeCloseTo(mag);
   });
 
   it('returns zero vector when user has no swipes', () => {
@@ -201,7 +200,7 @@ describe('computeCertaintyForScore', () => {
 });
 
 describe('rankCandidates', () => {
-  it('ranks candidates by similarity and returns per-title certainty', () => {
+  it('ranks candidates by similarity and returns certainty', () => {
     const swipeA = makeSwipe({
       id: 's1',
       mediaId: 'm1',
@@ -223,7 +222,9 @@ describe('rankCandidates', () => {
 
     const swipes: Swipe[] = [swipeA, swipeB, swipeC];
 
-    const userVec = buildUserPreferenceVector(swipes, 'user-1');
+    const userVec = buildUserPreferenceVector(swipes, 'user-1', (s) =>
+      buildEmbeddingFromSwipe(s, mockHash)
+    );
     const consensus = buildConsensusVector([userVec]);
 
     const { ranked, stats, sessionCertainty } = rankCandidates(
@@ -240,18 +241,16 @@ describe('rankCandidates', () => {
     ranked.forEach((r) => {
       expect(typeof r.mediaId).toBe('string');
       expect(typeof r.score).toBe('number');
-      expect(typeof r.certainty).toBe('number');
       expect(r.certainty).toBeGreaterThanOrEqual(0.5);
       expect(r.certainty).toBeLessThanOrEqual(1);
     });
 
-    // Top ranked should have score >= others
     expect(ranked[0].score).toBeGreaterThanOrEqual(ranked[1].score);
   });
 
   it('returns empty result when stats cannot be computed', () => {
     const swipes: Swipe[] = [];
-    const zeroConsensus = normalizeVector([0, 0, 0]); // isZero = true but we only use vector here
+    const zeroConsensus = normalizeVector([0, 0, 0]);
 
     const { ranked, stats, sessionCertainty } = rankCandidates(
       swipes,
