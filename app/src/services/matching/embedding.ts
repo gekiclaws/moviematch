@@ -90,13 +90,17 @@ const normalizeVector = (vector: number[]): PreferenceVector => {
   };
 };
 
-const buildUserPreferenceVector = (swipes: Swipe[], userId: string): PreferenceVector => {
+const buildUserPreferenceVector = (
+  swipes: Swipe[],
+  userId: string,
+  embedFn: (swipe: Swipe) => number[] = buildEmbeddingFromSwipe
+): PreferenceVector => {
   const userSwipes = swipes.filter((swipe) => swipe.userId === userId);
   const aggregate = new Array(EMBED_DIM).fill(0);
 
   userSwipes.forEach((swipe) => {
     const direction = swipe.decision === 'like' ? 1 : -1;
-    const embedding = buildEmbeddingFromSwipe(swipe);
+    const embedding = embedFn(swipe);
 
     embedding.forEach((value, index) => {
       aggregate[index] += value * direction;
@@ -106,7 +110,10 @@ const buildUserPreferenceVector = (swipes: Swipe[], userId: string): PreferenceV
   return normalizeVector(aggregate);
 };
 
-const buildConsensusVector = (vectors: PreferenceVector[]): PreferenceVector => {
+const buildConsensusVector = (
+  vectors: PreferenceVector[],
+  normalize: (vec: number[]) => PreferenceVector = normalizeVector
+): PreferenceVector => {
   const aggregate = new Array(EMBED_DIM).fill(0);
 
   vectors.forEach(({ vector }) => {
@@ -115,7 +122,7 @@ const buildConsensusVector = (vectors: PreferenceVector[]): PreferenceVector => 
     });
   });
 
-  return normalizeVector(aggregate);
+  return normalize(aggregate);
 };
 
 const dotProduct = (a: number[], b: number[]) => a.reduce((sum, value, index) => sum + value * b[index], 0);
