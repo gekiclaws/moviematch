@@ -49,29 +49,31 @@ const addHashedMultiHot = (
   start: number,
   size: number,
   vector: number[],
-  seed: number
+  seed: number,
+  hashFn: (v: string, seed: number) => number = hashString
 ) => {
-  if (!values || values.length === 0) {
-    return;
-  }
+  if (!values || values.length === 0) return;
 
-  values.forEach((item) => {
-    const index = start + (hashString(item, seed) % size);
+  values.forEach(item => {
+    const index = start + (hashFn(item, seed) % size);
     vector[index] = 1;
   });
 };
 
-const buildEmbeddingFromSwipe = (swipe: Swipe): number[] => {
+const buildEmbeddingFromSwipe = (
+  swipe: Swipe,
+  hashFn: (v: string, seed: number) => number = hashString
+): number[] => {
   const embedding = new Array(EMBED_DIM).fill(0);
 
-  addHashedMultiHot(swipe.genres, GENRE_START, GENRE_DIM, embedding, 11);
+  addHashedMultiHot(swipe.genres, GENRE_START, GENRE_DIM, embedding, 11, hashFn);
 
   embedding[RELEASE_YEAR_INDEX] = normalizeValue(swipe.releaseYear, 1900, 2025);
   embedding[RUNTIME_INDEX] = normalizeValue(swipe.runtime, 60, 240);
   embedding[RATING_INDEX] = normalizeValue(swipe.rating, 0, 10);
 
-  addHashedMultiHot(swipe.directors, DIRECTOR_START, DIRECTOR_DIM, embedding, 23);
-  addHashedMultiHot(swipe.cast, CAST_START, CAST_DIM, embedding, 37);
+  addHashedMultiHot(swipe.directors, DIRECTOR_START, DIRECTOR_DIM, embedding, 23, hashFn);
+  addHashedMultiHot(swipe.cast, CAST_START, CAST_DIM, embedding, 37, hashFn);
 
   return embedding;
 };
