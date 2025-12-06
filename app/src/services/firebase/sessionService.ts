@@ -150,6 +150,43 @@ export const SessionService = {
     await deleteDoc(ref);
   },
 
+  /**
+   * Delete session with proper error handling and user cleanup
+   * This method ensures all users are removed from the session before deletion
+   * @param sessionId - The session ID to delete
+   * @returns Promise<void>
+   */
+  async deleteSession(sessionId: string): Promise<void> {
+    try {
+      const session = await this.getSession(sessionId);
+      if (!session) {
+        console.warn(`Session ${sessionId} not found, may already be deleted`);
+        return;
+      }
+
+      // Clean up all users' joinedRoom field before deletion
+      // This prevents the listener from firing multiple times
+      const { UserService } = await import('./userService');
+      
+      await Promise.all(
+        session.userIds.map(async (userId) => {
+          try {
+            await UserService.leaveRoom(userId);
+          } catch (error) {
+            console.error(`Error cleaning up user ${userId}:`, error);
+          }
+        })
+      );
+
+      // Delete the session
+      await this.delete(sessionId);
+      console.log(`Session ${sessionId} deleted successfully`);
+    } catch (error) {
+      console.error(`Error deleting session ${sessionId}:`, error);
+      throw error;
+    }
+  },
+
   // Joining Business Logic
   async getHost(sessionId: string): Promise<string | null> {
     const session = await this.getSession(sessionId);
