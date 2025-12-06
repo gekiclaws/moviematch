@@ -277,14 +277,12 @@ describe('SessionService', () => {
   describe('joinSession', () => {
     it('adds user', async () => {
       const sess = { ...baseSession, userIds: ['host'], playerStatus: { host: 'awaiting' } };
-
-      getDocMock.mockResolvedValueOnce({
-        exists: () => true,
-        id: 'id',
-        data: () => sess,
+      getDocsMock.mockResolvedValueOnce({
+        empty: false,
+        docs: [{ id: 'id', data: () => sess }],
       });
 
-      await SessionService.joinSession('id', 'guest');
+      await SessionService.joinSession('123456', 'guest');
 
       expect(updateDocMock).toHaveBeenCalled();
     });
