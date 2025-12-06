@@ -31,7 +31,7 @@ export default function HomeScreen({ navigation }: Props) {
             }
 
             // Create session with the persistent user ID
-            const sessionId = await SessionService.create(currentUserId, {
+            const { sessionId, roomCode } = await SessionService.create(currentUserId, {
                 movieType: [],
                 genres: [],
                 streamingServices: [],
@@ -41,13 +41,14 @@ export default function HomeScreen({ navigation }: Props) {
                 sessionStatus: 'awaiting',
             });
 
-            const session = await SessionService.get(sessionId);
+            const session = await SessionService.getSession(sessionId);
 
             navigation.navigate('LobbyWaiting', {
                 sessionId,
                 userId: currentUserId,
                 isHost: true,
                 session: session || undefined,
+                roomCode, // Pass the room code for display
             });
         } catch (error) {
             console.error('Error creating room:', error);
