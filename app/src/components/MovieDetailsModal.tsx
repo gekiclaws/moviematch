@@ -48,9 +48,6 @@ export default function MovieDetailsModal({
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.dragIndicator} />
-            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-              <Text style={styles.closeButtonText}>✕</Text>
-            </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -131,6 +128,10 @@ export default function MovieDetailsModal({
               </View>
             )}
           </ScrollView>
+
+          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <Text style={styles.closeButtonText}>✕</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -151,7 +152,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: SCREEN_HEIGHT * 0.9,
-    paddingBottom: 20,
+    paddingBottom: 80,
+    position: 'relative',
   },
   header: {
     alignItems: 'center',
@@ -164,21 +166,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#ccc',
     borderRadius: 3,
   },
+  scrollView: {
+    paddingHorizontal: 20,
+  },
   closeButton: {
     position: 'absolute',
-    right: 15,
-    top: 10,
-    width: 30,
-    height: 30,
+    right: 16,
+    bottom: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#ffffff22',
+    borderWidth: 1,
+    borderColor: '#ffffffff',
     justifyContent: 'center',
     alignItems: 'center',
   },
   closeButtonText: {
-    fontSize: 24,
+    fontSize: 22,
     color: '#ffffffff',
-  },
-  scrollView: {
-    paddingHorizontal: 20,
+    fontWeight: 'bold',
   },
   modalPoster: {
     width: '100%',

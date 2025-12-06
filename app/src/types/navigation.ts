@@ -27,6 +27,7 @@ export interface ProfileParams{
 export interface LobbyWaitingParams {
     sessionId: string;
     userId: string;
+    roomCode?: string;
     session?: Session;
     isHost?: boolean;
 }
@@ -35,6 +36,7 @@ export interface SuccessfullyJoinedParams {
     sessionId: string;
     userId: string;
     userName: string;
+    roomCode?: string;
     session?: Session;
     hostUser?: User;
     isHost?: boolean;

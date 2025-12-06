@@ -1,6 +1,6 @@
 import * as streamingAvailability from "streaming-availability";
-import type { Media, StreamingGroup } from "../../types/media";
-import { MOVIE_API_KEY } from '@env';
+import type { Media } from "../../types/media";
+import { MOVIE_API_KEY } from "@env";
 
 const RAPID_API_HOST = 'streaming-availability.p.rapidapi.com';
 

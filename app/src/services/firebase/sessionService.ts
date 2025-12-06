@@ -1,3 +1,5 @@
+// app/src/services/firebase/sessionService.ts
+
 import {
   addDoc,
   collection,
@@ -7,25 +9,96 @@ import {
   updateDoc,
   onSnapshot,
   runTransaction,
+  query,
+  where,
+  getDocs,
   Unsubscribe,
 } from 'firebase/firestore';
 
 import { db } from './index';
-import type { MatchedTitle, PlayerReadiness, Session } from '../../types/session';
+import type { PlayerReadiness, Session } from '../../types/session';
+import { MatchingService } from '../matching/matchingService';
 
 const collectionRef = collection(db, 'sessions');
 
 export const SessionService = {
-  async create(hostId: string, sessionData: Omit<Session, 'id' | 'userIds' | 'playerStatus'>): Promise<string> {
-    const data = {
-      ...sessionData,
-      userIds: [hostId],
-      sessionStatus: 'awaiting' as const,
-      playerStatus: Object.fromEntries([[hostId, 'awaiting' as PlayerReadiness]]) as Record<string, PlayerReadiness>,
+  /**
+   * Generate a unique 6-digit room code
+   */
+  async generateRoomCode(): Promise<string> {
+    const maxAttempts = 10;
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+      // Generate 6-digit code (100000 - 999999)
+      const roomCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Check if code is already in use
+      const isAvailable = await this.isRoomCodeAvailable(roomCode);
+      if (isAvailable) {
+        return roomCode;
+      }
+
+      attempts++;
     }
 
+    throw new Error('Unable to generate unique room code after multiple attempts');
+  },
+
+  /**
+   * Check if a room code is available
+   */
+  async isRoomCodeAvailable(roomCode: string): Promise<boolean> {
+    const q = query(collectionRef, where('roomCode', '==', roomCode));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.empty;
+  },
+
+  /**
+   * Get session by room code
+   */
+  async getByRoomCode(roomCode: string): Promise<Session | null> {
+    const q = query(collectionRef, where('roomCode', '==', roomCode));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      return null;
+    }
+
+    const docSnap = querySnapshot.docs[0];
+    const data = docSnap.data() as Omit<Session, 'id'> & {
+      playerStatus?: Record<string, PlayerReadiness>;
+    };
+
+    const playerStatus =
+      data.playerStatus ??
+      (Object.fromEntries(
+        data.userIds.map((id) => [id, 'awaiting' as PlayerReadiness])
+      ) as Record<string, PlayerReadiness>);
+
+    return { id: docSnap.id, ...data, playerStatus };
+  },
+
+  async create(
+    hostId: string,
+    sessionData: Omit<Session, 'id' | 'roomCode' | 'userIds' | 'playerStatus'>
+  ): Promise<{ sessionId: string; roomCode: string }> {
+    // Generate unique room code
+    const roomCode = await this.generateRoomCode();
+
+    const data = {
+      ...sessionData,
+      roomCode,
+      userIds: [hostId],
+      sessionStatus: 'awaiting' as const,
+      playerStatus: Object.fromEntries([[hostId, 'awaiting' as PlayerReadiness]]) as Record<
+        string,
+        PlayerReadiness
+      >,
+    };
+
     const docRef = await addDoc(collectionRef, data);
-    return docRef.id;
+    return { sessionId: docRef.id, roomCode };
   },
 
   async get(id: string): Promise<Session | null> {
@@ -40,11 +113,27 @@ export const SessionService = {
       playerStatus?: Record<string, PlayerReadiness>;
     };
 
-    const playerStatus = data.playerStatus ?? (Object.fromEntries(
-      data.userIds.map((id) => [id, 'awaiting' as PlayerReadiness])
-    ) as Record<string, PlayerReadiness>);
+    const playerStatus =
+      data.playerStatus ??
+      (Object.fromEntries(
+        data.userIds.map((id) => [id, 'awaiting' as PlayerReadiness])
+      ) as Record<string, PlayerReadiness>);
 
     return { id: snapshot.id, ...data, playerStatus };
+  },
+
+  /**
+   * Get session with proper error handling and encapsulation
+   * @param sessionId - The session ID to retrieve
+   * @returns Promise<Session | null> - Session object or null if not found
+   */
+  async getSession(sessionId: string): Promise<Session | null> {
+    try {
+      return await this.get(sessionId);
+    } catch (error) {
+      console.error(`Error retrieving session ${sessionId}:`, error);
+      return null;
+    }
   },
 
   async update(id: string, data: Partial<Omit<Session, 'id'>>): Promise<void> {
@@ -60,23 +149,38 @@ export const SessionService = {
     const ref = doc(db, 'sessions', id);
     await deleteDoc(ref);
   },
-  
+
   // Joining Business Logic
   async getHost(sessionId: string): Promise<string | null> {
-    const session = await this.get(sessionId);
+    const session = await this.getSession(sessionId);
+    if (!session) return null;
+
+    return session.userIds.length > 0 ? session.userIds[0] : null;
+  },
+
+  async getHostByRoomCode(roomCode: string): Promise<string | null> {
+    const session = await this.getByRoomCode(roomCode);
     if (!session) return null;
 
     return session.userIds.length > 0 ? session.userIds[0] : null;
   },
 
   async getStatus(sessionId: string): Promise<Session['sessionStatus'] | null> {
-    const session = await this.get(sessionId);
+    const session = await this.getSession(sessionId);
     if (!session) return null;
-    
+
     return session.sessionStatus;
   },
-  async joinSession(sessionId: string, userId: string): Promise<void> {
-    const session = await this.get(sessionId);
+
+  async getStatusByRoomCode(roomCode: string): Promise<Session['sessionStatus'] | null> {
+    const session = await this.getByRoomCode(roomCode);
+    if (!session) return null;
+
+    return session.sessionStatus;
+  },
+
+  async joinSession(roomCode: string, userId: string): Promise<void> {
+    const session = await this.getByRoomCode(roomCode);
     if (!session) throw new Error('Room does not exist');
 
     // Check if the user can join (< 2 users and not already in session)
@@ -84,7 +188,24 @@ export const SessionService = {
     if (session.userIds.length >= 2) throw new Error('Room is full');
 
     // Update session with new user
-    const updateUserIds = [...session.userIds, userId]; // Previous + new user
+    const updateUserIds = [...session.userIds, userId];
+    const updatedPlayerStatus: Record<string, PlayerReadiness> = {
+      ...session.playerStatus,
+      [userId]: 'awaiting',
+    };
+
+    await this.update(session.id, { userIds: updateUserIds, playerStatus: updatedPlayerStatus });
+  },
+
+  // Optional helper if you still need to join by sessionId elsewhere
+  async joinSessionById(sessionId: string, userId: string): Promise<void> {
+    const session = await this.getSession(sessionId);
+    if (!session) throw new Error('Room does not exist');
+
+    if (session.userIds.includes(userId)) throw new Error('User already in room');
+    if (session.userIds.length >= 2) throw new Error('Room is full');
+
+    const updateUserIds = [...session.userIds, userId];
     const updatedPlayerStatus: Record<string, PlayerReadiness> = {
       ...session.playerStatus,
       [userId]: 'awaiting',
@@ -94,36 +215,32 @@ export const SessionService = {
   },
 
   async leaveSession(sessionId: string, userId: string): Promise<void> {
-    const session = await this.get(sessionId);
+    const session = await this.getSession(sessionId);
     if (!session) throw new Error('Room does not exist');
 
-    // Check if the user is in the session
     if (!session.userIds.includes(userId)) throw new Error('User not in room');
-    // Remove user from session
-    const updateUserIds = session.userIds.filter(id => id !== userId);
+
+    const updateUserIds = session.userIds.filter((id) => id !== userId);
     const { [userId]: _removed, ...remainingPlayerStatus } = session.playerStatus;
 
     await this.update(sessionId, { userIds: updateUserIds, playerStatus: remainingPlayerStatus });
   },
 
   async startMovieMatching(sessionId: string, userId: string): Promise<void> {
-    const session = await this.get(sessionId);
+    const session = await this.getSession(sessionId);
     if (!session) {
       throw new Error('Session does not exist');
     }
 
-    // Check host permissions
     const hostId = await this.getHost(sessionId);
     if (hostId !== userId) {
       throw new Error('Only the host can start the session');
     }
 
-    // Check if there are exactly 2 users
     if (session.userIds.length !== 2) {
       throw new Error('Session must have exactly 2 users to start');
     }
 
-    // Update session status to 'in progress'
     const playerStatus = Object.fromEntries(
       session.userIds.map((id) => [id, 'awaiting' as PlayerReadiness])
     ) as Record<string, PlayerReadiness>;
@@ -149,9 +266,11 @@ export const SessionService = {
         throw new Error('User not part of this session');
       }
 
-      const existingPlayerStatus = session.playerStatus ?? (Object.fromEntries(
-        session.userIds.map((id) => [id, 'awaiting' as PlayerReadiness])
-      ) as Record<string, PlayerReadiness>);
+      const existingPlayerStatus =
+        session.playerStatus ??
+        (Object.fromEntries(
+          session.userIds.map((id) => [id, 'awaiting' as PlayerReadiness])
+        ) as Record<string, PlayerReadiness>);
 
       if (existingPlayerStatus[userId] === 'done') {
         return;
@@ -166,63 +285,20 @@ export const SessionService = {
         [`playerStatus.${userId}`]: 'done',
       };
 
-      const allPlayersDone = session.userIds.every((id) => updatedPlayerStatus[id] === 'done');
+      const allPlayersDone = session.userIds.every(
+        (id) => updatedPlayerStatus[id] === 'done'
+      );
 
       if (allPlayersDone) {
         const swipes = Array.isArray(session.swipes) ? session.swipes : [];
-        const likeMap = new Map<string, Set<string>>();
 
-        swipes.forEach((swipe) => {
-          if (swipe.decision !== 'like') {
-            return;
-          }
-
-          if (!likeMap.has(swipe.userId)) {
-            likeMap.set(swipe.userId, new Set());
-          }
-
-          likeMap.get(swipe.userId)!.add(swipe.mediaId);
-        });
-
-        const intersection = session.userIds.reduce<Set<string> | null>((acc, user) => {
-          const userLikes = likeMap.get(user) ?? new Set<string>();
-          if (acc === null) {
-            return new Set(userLikes);
-          }
-
-          return new Set(Array.from(acc).filter((mediaId) => userLikes.has(mediaId)));
-        }, null);
-
-        const matchedIdsSet = intersection ?? new Set<string>();
-
-        const orderedMatchedIds = swipes
-          .filter((swipe) => swipe.decision === 'like' && matchedIdsSet.has(swipe.mediaId))
-          .map((swipe) => swipe.mediaId)
-          .filter((mediaId, index, array) => array.indexOf(mediaId) === index);
-
-        const matchedTitles: MatchedTitle[] = orderedMatchedIds.map((mediaId) => {
-          const swipeWithMeta = swipes.find(
-            (swipe) => swipe.mediaId === mediaId && swipe.decision === 'like'
-          );
-
-          const match: MatchedTitle = {
-            id: mediaId,
-            title: swipeWithMeta?.mediaTitle ?? mediaId,
-          };
-
-          if (swipeWithMeta?.posterUrl) {
-            match.posterUrl = swipeWithMeta.posterUrl;
-          }
-
-          if (swipeWithMeta?.streamingServices && swipeWithMeta.streamingServices.length > 0) {
-            match.streamingServices = swipeWithMeta.streamingServices;
-          }
-
-          return match;
-        });
+        const { matchedTitles, algorithmVersion, certainty } =
+          MatchingService.matchSession(swipes, session.userIds);
 
         updates.sessionStatus = 'complete';
         updates.matchedTitles = matchedTitles;
+        updates.matchingAlgorithmVersion = algorithmVersion;
+        updates.matchCertainty = certainty;
       }
 
       transaction.update(sessionRef, updates);
@@ -230,20 +306,13 @@ export const SessionService = {
   },
 
   // Real-time Listeners
-  /**
-   * Subscribe to real-time updates for a specific session
-   * @param sessionId - The session to listen to
-   * @param onUpdate - Callback function when session data changes
-   * @param onError - Callback function when listener encounters an error
-   * @returns Unsubscribe function to stop listening
-  */
   subscribeToSession(
     sessionId: string,
     onUpdate: (session: Session | null) => void,
     onError?: (error: Error) => void
   ): Unsubscribe {
     const ref = doc(db, 'sessions', sessionId);
-    
+
     return onSnapshot(
       ref,
       (snapshot) => {
@@ -252,9 +321,11 @@ export const SessionService = {
             const data = snapshot.data() as Omit<Session, 'id'> & {
               playerStatus?: Record<string, PlayerReadiness>;
             };
-            const playerStatus = data.playerStatus ?? (Object.fromEntries(
-              data.userIds.map((id) => [id, 'awaiting' as PlayerReadiness])
-            ) as Record<string, PlayerReadiness>);
+            const playerStatus =
+              data.playerStatus ??
+              (Object.fromEntries(
+                data.userIds.map((id) => [id, 'awaiting' as PlayerReadiness])
+              ) as Record<string, PlayerReadiness>);
 
             const session: Session = {
               id: snapshot.id,
@@ -263,7 +334,6 @@ export const SessionService = {
             };
             onUpdate(session);
           } else {
-            // Session was deleted
             onUpdate(null);
           }
         } catch (error) {
@@ -278,20 +348,13 @@ export const SessionService = {
     );
   },
 
-  /**
-   * Subscribe only to session status changes (more efficient for status monitoring)
-   * @param sessionId - The session to monitor
-   * @param onStatusChange - Callback when status changes
-   * @param onError - Error callback
-   * @returns Unsubscribe function
-   */
   subscribeToSessionStatus(
     sessionId: string,
     onStatusChange: (status: Session['sessionStatus'] | null, userCount: number) => void,
     onError?: (error: Error) => void
   ): Unsubscribe {
     const ref = doc(db, 'sessions', sessionId);
-    
+
     return onSnapshot(
       ref,
       (snapshot) => {
@@ -303,7 +366,7 @@ export const SessionService = {
             onStatusChange(null, 0);
           }
         } catch (error) {
-          console.error('Error processing status update:', error);
+          console.error('Status listener error:', error);
           onError?.(error as Error);
         }
       },
@@ -314,37 +377,34 @@ export const SessionService = {
     );
   },
 
-  /**
-   * Helper to manage multiple listeners for a session
-   * Useful for screens that need multiple types of updates
-   */
   createSessionListeners(sessionId: string) {
     const listeners: Unsubscribe[] = [];
-    
+
     return {
-      // Subscribe to full session updates
-      onSessionUpdate: (callback: (session: Session | null) => void, onError?: (error: Error) => void) => {
+      onSessionUpdate: (
+        callback: (session: Session | null) => void,
+        onError?: (error: Error) => void
+      ) => {
         const unsubscribe = this.subscribeToSession(sessionId, callback, onError);
         listeners.push(unsubscribe);
         return unsubscribe;
       },
-      
-      // Subscribe to status-only updates
-      onStatusUpdate: (callback: (status: Session['sessionStatus'] | null, userCount: number) => void, onError?: (error: Error) => void) => {
+
+      onStatusUpdate: (
+       callback: (status: Session['sessionStatus'] | null, userCount: number) => void,
+        onError?: (error: Error) => void
+      ) => {
         const unsubscribe = this.subscribeToSessionStatus(sessionId, callback, onError);
         listeners.push(unsubscribe);
         return unsubscribe;
       },
-      
-      // Cleanup all listeners at once
+
       cleanup: () => {
-        listeners.forEach(unsubscribe => unsubscribe());
-        listeners.length = 0; // Clear the array
-      }
+        listeners.forEach((unsubscribe) => unsubscribe());
+        listeners.length = 0;
+      },
     };
   },
-
-
 };
 
 export default SessionService;

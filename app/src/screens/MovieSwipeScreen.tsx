@@ -11,7 +11,7 @@ import {
   Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getMoviesByPreferences } from '../services/api/mediaApiService';
+import { movieProvider } from '../services/movies/providerRegistry';
 import { SwipeService } from '../services/firebase/swipeService';
 import { SessionService } from '../services/firebase/sessionService';
 import { UserService } from '../services/firebase/userService';
@@ -154,7 +154,7 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
 
       const typesToFetch = route.params.sessionTypes || userData.preferences.selectedTypes;
 
-      const fetchedMovies = await getMoviesByPreferences(
+      const fetchedMovies = await movieProvider.getMoviesByPreferences(
         {
           selectedTypes: typesToFetch,
           selectedGenres: [],
@@ -186,7 +186,7 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
     if (!user) return;
 
     try {
-      const moreMovies = await getMoviesByPreferences(
+      const moreMovies = await movieProvider.getMoviesByPreferences(
         user.preferences,
         'us',
         { minRating: 60, limit: 10, orderBy: 'popularity_alltime' }
