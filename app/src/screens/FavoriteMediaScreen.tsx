@@ -38,7 +38,7 @@ export default function FavoriteMediasScreen({ route, navigation }: Props) {
   const [searching, setSearching] = useState(false);
   const [loading, setLoading] = useState(false);
   const [initialMedia, setInitialMedia] = useState<Media[]>([]);
-
+  
   useEffect(() => {
     console.log("Edit Mode?:", editMode);
   }, []);
@@ -69,36 +69,52 @@ export default function FavoriteMediasScreen({ route, navigation }: Props) {
     init();
   }, []);
 
-  const loadPopularMovies = async () => {
-    try {
-      setSearching(true);
-      const popular = await getPopularMovies('netflix', 'us');
-      setInitialMedia(popular);
-      setSearchResults(popular);
-    } catch (err: any) {
-      console.error('Error loading popular movies:', err);
-    } finally {
-      setSearching(false);
-    }
-  };
+  const isValidPoster = (url?: string) => {
+  if (!url) return false;
+  return !url.includes("media/image.svg");
+};
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) {
-      setSearchResults(initialMedia);
-      return;
-    }
+const filterValidMedia = (data: Media[]) => {
+  return data.filter(m => isValidPoster(m.poster));
+};
 
-    try {
-      setSearching(true);
-      const results = await searchMoviesByTitle(searchQuery, 'us');
-      setSearchResults(results);
-    } catch (err: any) {
-      console.error('Error searching movies:', err);
-      Alert.alert('Error', 'Failed to search movies');
-    } finally {
-      setSearching(false);
-    }
-  };
+const loadPopularMovies = async () => {
+  try {
+    setSearching(true);
+    const popular = await getPopularMovies('netflix', 'us');
+
+    const cleaned = filterValidMedia(popular);
+
+    setInitialMedia(cleaned);
+    setSearchResults(cleaned);
+  } catch (err: any) {
+    console.error('Error loading popular movies:', err);
+  } finally {
+    setSearching(false);
+  }
+};
+
+const handleSearch = async () => {
+  if (!searchQuery.trim()) {
+    setSearchResults(initialMedia);
+    return;
+  }
+
+  try {
+    setSearching(true);
+    const results = await searchMoviesByTitle(searchQuery, 'us');
+
+    const cleaned = filterValidMedia(results);
+
+    setSearchResults(cleaned);
+  } catch (err: any) {
+    console.error('Error searching movies:', err);
+    Alert.alert('Error', 'Failed to search movies');
+  } finally {
+    setSearching(false);
+  }
+};
+
 
   const toggleMedia = (mediaId: string) => {
     setSelectedMedias((prev) => {

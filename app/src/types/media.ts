@@ -18,6 +18,7 @@ export interface Media {
   releaseYear?: number;
   genres: string[];
   poster?: string;
+  backdrop?: string;
   trailerUrl?: string;
   directors: string[];
   cast: string[];
