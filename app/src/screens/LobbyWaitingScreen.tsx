@@ -67,7 +67,7 @@ export default function LobbyWaitingScreen({ navigation, route }: Props) {
       setError(null);
 
       // Load session data
-      const sessionData = await SessionService.get(sessionId);
+      const sessionData = await SessionService.getSession(sessionId);
       if (!sessionData) {
         throw new Error('Session not found');
       }

@@ -108,6 +108,20 @@ export const SessionService = {
     return { id: snapshot.id, ...data, playerStatus };
   },
 
+  /**
+   * Get session with proper error handling and encapsulation
+   * @param sessionId - The session ID to retrieve
+   * @returns Promise<Session | null> - Session object or null if not found
+   */
+  async getSession(sessionId: string): Promise<Session | null> {
+    try {
+      return await this.get(sessionId);
+    } catch (error) {
+      console.error(`Error retrieving session ${sessionId}:`, error);
+      return null;
+    }
+  },
+
   async update(id: string, data: Partial<Omit<Session, 'id'>>): Promise<void> {
     if (data.userIds && (data.userIds.length < 1 || data.userIds.length > 2)) {
       throw new Error('Session must have 1 or 2 users');
@@ -124,7 +138,7 @@ export const SessionService = {
   
   // Joining Business Logic
   async getHost(sessionId: string): Promise<string | null> {
-    const session = await this.get(sessionId);
+    const session = await this.getSession(sessionId);
     if (!session) return null;
 
     return session.userIds.length > 0 ? session.userIds[0] : null;
@@ -138,7 +152,7 @@ export const SessionService = {
   },
 
   async getStatus(sessionId: string): Promise<Session['sessionStatus'] | null> {
-    const session = await this.get(sessionId);
+    const session = await this.getSession(sessionId);
     if (!session) return null;
     
     return session.sessionStatus;
@@ -169,7 +183,7 @@ export const SessionService = {
   },
 
   async leaveSession(sessionId: string, userId: string): Promise<void> {
-    const session = await this.get(sessionId);
+    const session = await this.getSession(sessionId);
     if (!session) throw new Error('Room does not exist');
 
     // Check if the user is in the session
@@ -182,7 +196,7 @@ export const SessionService = {
   },
 
   async startMovieMatching(sessionId: string, userId: string): Promise<void> {
-    const session = await this.get(sessionId);
+    const session = await this.getSession(sessionId);
     if (!session) {
       throw new Error('Session does not exist');
     }

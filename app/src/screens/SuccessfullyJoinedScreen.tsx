@@ -29,7 +29,7 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
       setIsLoading(true);
       setError(null);
 
-      const sessionData = await SessionService.get(sessionId);
+      const sessionData = await SessionService.getSession(sessionId);
       if (!sessionData) {
         throw new Error('Session not found');
       }

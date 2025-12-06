@@ -41,7 +41,7 @@ export default function HomeScreen({ navigation }: Props) {
                 sessionStatus: 'awaiting',
             });
 
-            const session = await SessionService.get(sessionId);
+            const session = await SessionService.getSession(sessionId);
 
             navigation.navigate('LobbyWaiting', {
                 sessionId,

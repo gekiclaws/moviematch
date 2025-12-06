@@ -72,7 +72,7 @@ export default function JoinRoomScreen({ navigation }: Props) {
       await SessionService.joinSession(roomCode.trim(), currentUserId);
 
       // Get updated session data
-      const updatedSession = await SessionService.get(session.id);
+      const updatedSession = await SessionService.getSession(session.id);
 
       // Get host user information
       const hostUser = await UserService.get(session.userIds[0]);
