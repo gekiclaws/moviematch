@@ -41,6 +41,14 @@ export const SwipeService = {
         mediaId: media.id,
         mediaTitle: media.title,
         posterUrl: media.poster,
+        genres: 'genres' in media && Array.isArray((media as Media).genres) ? (media as Media).genres : undefined,
+        releaseYear: 'releaseYear' in media ? (media as Media).releaseYear : undefined,
+        runtime: 'runtime' in media ? (media as Media).runtime : undefined,
+        rating: 'rating' in media ? (media as Media).rating : undefined,
+        directors: 'directors' in media && Array.isArray((media as Media).directors)
+          ? (media as Media).directors
+          : undefined,
+        cast: 'cast' in media && Array.isArray((media as Media).cast) ? (media as Media).cast : undefined,
         streamingServices,
         decision: decision,
         createdAt: Date.now(),

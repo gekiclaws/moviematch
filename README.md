@@ -46,3 +46,10 @@
    ```bash
    npm run test -- --run src/services/firebase/sessionService.test.ts
    ```
+
+3. Once all tests are passing, check coverage:
+   ```
+   npx vitest --coverage
+   ```
+
+   Ensure your service has 90%+ statement coverage before submitting a PR.

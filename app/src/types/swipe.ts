@@ -6,6 +6,12 @@ export interface Swipe {
   mediaId: string;
   mediaTitle?: string;
   posterUrl?: string;
+  genres?: string[];
+  releaseYear?: number;
+  runtime?: number;
+  rating?: number;
+  directors?: string[];
+  cast?: string[];
   streamingServices?: string[];
   decision: SwipeDecision;
   createdAt: number;
