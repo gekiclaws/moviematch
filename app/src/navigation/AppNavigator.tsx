@@ -71,14 +71,11 @@ export default function AppNavigator() {
                 <Stack.Screen
                     name='LobbyWaiting'
                     component={LobbyWaitingScreen}
-                    options={({ route }) => {
-                        const roomCode = route.params && 'roomCode' in route.params ? route.params.roomCode : 
-                                       (route.params && 'sessionId' in route.params ? route.params.sessionId : 'Unknown');
-                        return {
-                            title: `Room: ${roomCode}`,
-                            backTitle: 'Back to Home', // Custom back title
-                            gestureEnabled: false, // Disable swipe back
-                        };
+                    options={{
+                        title: 'Lobby',
+                        headerBackTitle: 'Back to Home',
+                        gestureEnabled: false, // Disable swipe back
+                        headerLeft: () => null, // Disable default back button - using custom in-screen button
                     }}
                 />
 
@@ -97,11 +94,12 @@ export default function AppNavigator() {
                 <Stack.Screen
                     name='SuccessfullyJoined'
                     component={SuccessfullyJoinedScreen}
-                    options={({ route }) => ({
-                        title: `Room: ${route.params.roomCode || route.params.sessionId}`,
+                    options={{
+                        title: 'Waiting Room',
                         headerBackTitle: 'Back to Home',
-                        gestureEnabled: false
-                    })}
+                        gestureEnabled: false,
+                        headerLeft: () => null, // Disable back button - guests wait for host
+                    }}
                 />
 
                 { /* Session Type Selection Screen */ }
