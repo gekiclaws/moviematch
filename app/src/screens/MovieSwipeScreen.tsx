@@ -9,6 +9,7 @@ import {
   Dimensions,
   Alert,
   BackHandler,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { movieProvider } from '../services/movies/providerRegistry';
@@ -21,6 +22,7 @@ import MovieCard from '../components/MovieCard';
 import MovieDetailsModal from '../components/MovieDetailsModal';
 import type { Media } from '../types/media';
 import type { User } from '../types/user';
+import { styles } from '../styles/MovieSwipeStyles';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -46,8 +48,14 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
   const [selectedMovie, setSelectedMovie] = useState<Media | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  
+  const [showTutorialChoice, setShowTutorialChoice] = useState(true); // Ask user to start tutorial
+  const [showTutorial, setShowTutorial] = useState(false);            // Animate tutorial steps
+  const [tutorialStep, setTutorialStep] = useState(0);                // 0=left, 1=right, 2=info
   const hasMarkedFinishedRef = useRef(false);
   const hasNavigatedRef = useRef(false);
+  const arrowAnim = useRef(new Animated.Value(0)).current;
+  const tutorialTime = 3500;
 
   useEffect(() => {
     loadUserAndMovies();
@@ -66,6 +74,26 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
   useEffect(() => {
     SessionErrorHandler.resetSessionEndedFlag();
     
+    if (!showTutorial) return;
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(arrowAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(arrowAnim, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+  }, [showTutorial, tutorialStep]);
+
+  useEffect(() => {
     const unsubscribe = SessionService.subscribeToSession(
       sessionId,
       (updatedSession) => {
@@ -101,6 +129,34 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
     //   loadMoreMovies();
     // }
   }, [currentIndex]);
+
+    useEffect(() => {
+      if (modalVisible) {
+        setSelectedMovie(movies[currentIndex]);
+      }
+    }, [currentIndex, modalVisible]);
+
+  useEffect(() => {
+    if (!showTutorial) return;
+
+    let timer: NodeJS.Timeout;
+
+    if (tutorialStep === 0) {
+      // After 3s → show "Swipe right"
+      timer = setTimeout(() => setTutorialStep(1), tutorialTime);
+    } else if (tutorialStep === 1) {
+      // After 3s → show "Tap for details"
+      timer = setTimeout(() => setTutorialStep(2), tutorialTime);
+    } else if (tutorialStep === 2) {
+      // After 3s → end tutorial
+      timer = setTimeout(() => {
+        setShowTutorial(false);
+        setTutorialStep(0);
+      }, tutorialTime);
+    }
+
+    return () => clearTimeout(timer);
+  }, [tutorialStep, showTutorial]);
 
   /**
    * Handle back button press - delete session and navigate home
@@ -169,7 +225,7 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
       console.error('Error loading more movies:', err);
     }
   };
-
+  
   /**
    * Handle swipe left (dislike)
    */
@@ -212,7 +268,8 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
    * Open movie details modal
    */
   const handleOpenDetails = (movie: Media) => {
-    setSelectedMovie(movie);
+    console.log('Opening details for:', movies[currentIndex]); // Debug log
+    setSelectedMovie(movies[currentIndex]);
     setModalVisible(true);
   };
 
@@ -287,6 +344,36 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Tutorial Choice Popup */}
+      {showTutorialChoice && (
+        <View style={styles.fullScreenOverlay}>
+          <View style={styles.tutorialBox}>
+            <Text style={styles.tutorialTitle}>Want a quick tutorial?</Text>
+            <Text style={styles.tutorialText}>
+              Learn how swiping works — it only takes a few seconds.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.tutorialButton}
+              onPress={() => {
+                setShowTutorialChoice(false);
+                setShowTutorial(true);
+                setTutorialStep(0);
+              }}
+            >
+              <Text style={styles.tutorialButtonText}>Start Tutorial</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.skipButton}
+              onPress={() => setShowTutorialChoice(false)}
+            >
+              <Text style={styles.skipButtonText}>Skip</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBackPress}>
@@ -304,10 +391,87 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
           movie={currentMovie}
           onSwipeLeft={handleDislike}
           onSwipeRight={handleLike}
-          onPress={() => handleOpenDetails(currentMovie)}
+          onSwipeUp={handleOpenDetails}
           isTopCard={true}
         />
       </View>
+
+      {/* Tutorial Step Overlay */}
+      {showTutorial && (
+        <View style={styles.tutorialHintOverlay} pointerEvents="none">
+          {tutorialStep === 0 && (
+            <>
+              <Text style={styles.hintText}>Swipe left to dislike </Text>
+              <Animated.Text
+                style={[
+                  styles.arrow,
+                  {
+                    transform: [
+                      {
+                        translateX: arrowAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, -20], // ← moves left
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                ←
+              </Animated.Text>
+            </>
+          )}
+
+          {tutorialStep === 1 && (
+            <>
+              <Text style={styles.hintText}>Swipe right to like</Text>
+              <Animated.Text
+                style={[
+                  styles.arrow,
+                  {
+                    transform: [
+                      {
+                        translateX: arrowAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, 20], // → moves right
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                →
+              </Animated.Text>
+            </>
+          )}
+
+          {tutorialStep === 2 && (
+          <>
+            <Text style={styles.hintText}>Swipe up for more details </Text>
+            <Animated.Text
+              style={[
+                styles.arrow,
+                {
+                  transform: [
+                    {
+                      translateY: arrowAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, -20], // ↑ moves upward
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              ↑
+            </Animated.Text>
+          </>
+        )}
+
+        </View>
+      )}
+
+
 
       {/* Action Buttons */}
       <View style={styles.buttonsContainer}>
@@ -328,127 +492,15 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
 
       {/* Movie Details Modal */}
       <MovieDetailsModal
+        key={selectedMovie?.id}
         visible={modalVisible}
         movie={selectedMovie}
-        onClose={() => setModalVisible(false)}
+        onClose={() => {
+          setModalVisible(false);
+          setSelectedMovie(null);
+        }}
       />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000000ff',
-  },
-  header: {
-    position: 'absolute',  // Position on top of card
-    top: 50,  // Adjust for safe area
-    left: 0,
-    right: 0,
-    zIndex: 100,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-  },
-  backButton: {
-    fontSize: 16,
-    color: '#ffffffff',
-    width: 60,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#ffffffff',
-  },
-  cardContainer: {
-    color: '#333',
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 80,
-    paddingBottom: 100
-  },
-  buttonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 30,
-    gap: 40,
-  },
-  actionButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  dislikeButton: {
-    backgroundColor: '#F44336',
-  },
-  likeButton: {
-    backgroundColor: '#4CAF50',
-  },
-  buttonIcon: {
-    fontSize: 32,
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 15,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    gap: 20,
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#F44336',
-    textAlign: 'center',
-  },
-  retryButton: {
-    backgroundColor: '#3498db',
-    paddingHorizontal: 30,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  noMoreContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    gap: 15,
-  },
-  noMoreText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  noMoreSubtext: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-  },
-});
