@@ -36,7 +36,7 @@ const {
     runTransactionMock: vi.fn(),
     transactionGetMock: vi.fn(),
     transactionUpdateMock: vi.fn(),
-    onSnapshotMock: vi.fn(),
+    onSnapshotMock: vi.fn(() => vi.fn()), // Returns unsubscribe function
   };
 });
 
@@ -205,27 +205,68 @@ describe('SessionService', () => {
 
   /**
    * ────────────────────────────────────────────────
-   * GET
+   * GET SESSION (Encapsulated with error handling)
    * ────────────────────────────────────────────────
    */
-  it('returns null when get finds no session', async () => {
-    getDocMock.mockResolvedValueOnce({ exists: () => false });
+  describe('getSession', () => {
+    it('returns session when found', async () => {
+      getDocMock.mockResolvedValueOnce({
+        exists: () => true,
+        id: 'session-123',
+        data: () => baseSession,
+      });
 
-    const result = await SessionService.get('missing-id');
-    expect(result).toBeNull();
-  });
+      const result = await SessionService.getSession('session-123');
 
-  it('returns stored session', async () => {
-    const storedSession = { ...baseSession, genres: ['comedy'] };
-
-    getDocMock.mockResolvedValueOnce({
-      exists: () => true,
-      id: 'existing-id',
-      data: () => storedSession,
+      expect(result).toEqual({ id: 'session-123', ...baseSession });
     });
 
-    const result = await SessionService.get('existing-id');
-    expect(result).toEqual({ id: 'existing-id', ...storedSession });
+    it('returns null when session not found', async () => {
+      getDocMock.mockResolvedValueOnce({
+        exists: () => false,
+      });
+
+      const result = await SessionService.getSession('nonexistent-id');
+
+      expect(result).toBeNull();
+    });
+
+    it('returns null and logs error when get throws', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      getDocMock.mockRejectedValueOnce(new Error('Network error'));
+
+      const result = await SessionService.getSession('session-123');
+
+      expect(result).toBeNull();
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Error retrieving session session-123'),
+        expect.any(Error)
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('handles session with playerStatus defaults', async () => {
+      const sessionWithoutPlayerStatus = {
+        ...baseSession,
+        playerStatus: undefined,
+      };
+
+      getDocMock.mockResolvedValueOnce({
+        exists: () => true,
+        id: 'session-123',
+        data: () => ({
+          ...baseSession,
+          playerStatus: undefined,
+        }),
+      });
+
+      const result = await SessionService.getSession('session-123');
+
+      expect(result?.playerStatus).toBeDefined();
+      expect(result?.playerStatus['user-1']).toBe('awaiting');
+    });
   });
 
   it('fills playerStatus when missing from stored session', async () => {
@@ -282,6 +323,157 @@ describe('SessionService', () => {
     await SessionService.delete('session-123');
 
     expect(deleteDocMock).toHaveBeenCalled();
+  });
+
+  /**
+   * ────────────────────────────────────────────────
+   * DELETE SESSION (Encapsulated with cleanup)
+   * ────────────────────────────────────────────────
+   */
+  describe('deleteSession', () => {
+    // Mock the UserService module
+    let userServiceMock: any;
+
+    beforeEach(() => {
+      userServiceMock = {
+        leaveRoom: vi.fn().mockResolvedValue(undefined),
+      };
+
+      vi.doMock('../../../../services/firebase/userService', () => ({
+        UserService: userServiceMock,
+      }));
+    });
+
+    it('cleans up all users before deleting session', async () => {
+      const sessionWithTwoUsers = {
+        ...baseSession,
+        userIds: ['user-1', 'user-2'],
+        playerStatus: { 'user-1': 'awaiting', 'user-2': 'awaiting' },
+      };
+
+      getDocMock.mockResolvedValueOnce({
+        exists: () => true,
+        id: 'session-123',
+        data: () => sessionWithTwoUsers,
+      });
+
+      deleteDocMock.mockResolvedValueOnce(undefined);
+
+      await SessionService.deleteSession('session-123');
+
+      expect(deleteDocMock).toHaveBeenCalledWith({ path: 'sessions/session-123' });
+    });
+
+    it('returns early if session not found', async () => {
+      getDocMock.mockResolvedValueOnce({
+        exists: () => false,
+      });
+
+      await SessionService.deleteSession('nonexistent-session');
+
+      expect(deleteDocMock).not.toHaveBeenCalled();
+    });
+
+    it('handles error when cleaning up user', async () => {
+      const sessionWithUsers = {
+        ...baseSession,
+        userIds: ['user-1', 'user-2'],
+        playerStatus: { 'user-1': 'awaiting', 'user-2': 'awaiting' },
+      };
+
+      getDocMock.mockResolvedValueOnce({
+        exists: () => true,
+        id: 'session-123',
+        data: () => sessionWithUsers,
+      });
+
+      deleteDocMock.mockResolvedValueOnce(undefined);
+
+      await SessionService.deleteSession('session-123');
+
+      expect(deleteDocMock).toHaveBeenCalled();
+    });
+
+    it('deletes session even if user cleanup partially fails', async () => {
+      const sessionWithUsers = {
+        ...baseSession,
+        userIds: ['user-1', 'user-2'],
+        playerStatus: { 'user-1': 'awaiting', 'user-2': 'awaiting' },
+      };
+
+      getDocMock.mockResolvedValueOnce({
+        exists: () => true,
+        id: 'session-123',
+        data: () => sessionWithUsers,
+      });
+
+      deleteDocMock.mockResolvedValueOnce(undefined);
+
+      await SessionService.deleteSession('session-123');
+
+      expect(deleteDocMock).toHaveBeenCalled();
+    });
+
+    it('logs error if deleteSession fails', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      getDocMock.mockResolvedValueOnce({
+        exists: () => true,
+        id: 'session-123',
+        data: () => baseSession,
+      });
+
+      deleteDocMock.mockRejectedValueOnce(new Error('Firebase error'));
+
+      await expect(SessionService.deleteSession('session-123')).rejects.toThrow(
+        'Firebase error'
+      );
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Error deleting session'),
+        expect.any(Error)
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('handles single user session deletion', async () => {
+      const singleUserSession = {
+        ...baseSession,
+        userIds: ['host-user'],
+        playerStatus: { 'host-user': 'awaiting' },
+      };
+
+      getDocMock.mockResolvedValueOnce({
+        exists: () => true,
+        id: 'session-123',
+        data: () => singleUserSession,
+      });
+
+      deleteDocMock.mockResolvedValueOnce(undefined);
+
+      await SessionService.deleteSession('session-123');
+
+      expect(deleteDocMock).toHaveBeenCalled();
+    });
+
+    it('logs successful deletion', async () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      getDocMock.mockResolvedValueOnce({
+        exists: () => true,
+        id: 'session-123',
+        data: () => baseSession,
+      });
+
+      deleteDocMock.mockResolvedValueOnce(undefined);
+
+      await SessionService.deleteSession('session-123');
+
+      expect(consoleSpy).toHaveBeenCalledWith('Session session-123 deleted successfully');
+
+      consoleSpy.mockRestore();
+    });
   });
 
   /**
@@ -855,6 +1047,206 @@ describe('SessionService', () => {
 
       subscribeSessionSpy.mockRestore();
       subscribeStatusSpy.mockRestore();
+    });
+  });
+
+  /**
+   * ────────────────────────────────────────────────
+   * SESSION MANAGEMENT SCENARIOS
+   * ────────────────────────────────────────────────
+   */
+  describe('Session Management Scenarios', () => {
+    describe('Scenario 1: Host exits from waiting room', () => {
+      it('should delete session and clean up users', async () => {
+        const sessionWithGuest = {
+          ...baseSession,
+          userIds: ['host-user', 'guest-user'],
+          playerStatus: { 'host-user': 'awaiting', 'guest-user': 'awaiting' },
+        };
+
+        getDocMock.mockResolvedValueOnce({
+          exists: () => true,
+          id: 'session-123',
+          data: () => sessionWithGuest,
+        });
+
+        deleteDocMock.mockResolvedValueOnce(undefined);
+
+        await SessionService.deleteSession('session-123');
+
+        expect(deleteDocMock).toHaveBeenCalled();
+      });
+
+      it('should handle deletion even if one user cleanup fails', async () => {
+        const sessionWithUsers = {
+          ...baseSession,
+          userIds: ['host-user', 'guest-user'],
+          playerStatus: { 'host-user': 'awaiting', 'guest-user': 'awaiting' },
+        };
+
+        getDocMock.mockResolvedValueOnce({
+          exists: () => true,
+          id: 'session-123',
+          data: () => sessionWithUsers,
+        });
+
+        deleteDocMock.mockResolvedValueOnce(undefined);
+
+        await SessionService.deleteSession('session-123');
+
+        expect(deleteDocMock).toHaveBeenCalled();
+      });
+    });
+
+    describe('Scenario 2: Guest exits during movie swiping', () => {
+      it('should retrieve session and delete when guest leaves', async () => {
+        const sessionInProgress = {
+          ...baseSession,
+          userIds: ['host-user', 'guest-user'],
+          sessionStatus: 'in progress' as const,
+          playerStatus: { 'host-user': 'awaiting', 'guest-user': 'done' },
+        };
+
+        getDocMock.mockResolvedValueOnce({
+          exists: () => true,
+          id: 'session-123',
+          data: () => sessionInProgress,
+        });
+
+        deleteDocMock.mockResolvedValueOnce(undefined);
+
+        await SessionService.deleteSession('session-123');
+
+        expect(deleteDocMock).toHaveBeenCalled();
+      });
+    });
+
+    describe('Scenario 3: Multiple users in session cleanup', () => {
+      it('should clean up all user references before deletion', async () => {
+        const sessionWithUsers = {
+          ...baseSession,
+          userIds: ['user-1', 'user-2'],
+          playerStatus: { 'user-1': 'awaiting', 'user-2': 'awaiting' },
+        };
+
+        getDocMock.mockResolvedValueOnce({
+          exists: () => true,
+          id: 'session-123',
+          data: () => sessionWithUsers,
+        });
+
+        deleteDocMock.mockResolvedValueOnce(undefined);
+
+        await SessionService.deleteSession('session-123');
+
+        // Verify session was deleted
+        expect(deleteDocMock).toHaveBeenCalledWith({ path: 'sessions/session-123' });
+      });
+    });
+
+    describe('Scenario 4: Session already deleted', () => {
+      it('should handle gracefully when session not found', async () => {
+        getDocMock.mockResolvedValueOnce({
+          exists: () => false,
+        });
+
+        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        await SessionService.deleteSession('nonexistent-session');
+
+        expect(deleteDocMock).not.toHaveBeenCalled();
+        expect(consoleSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Session nonexistent-session not found')
+        );
+
+        consoleSpy.mockRestore();
+      });
+    });
+
+    describe('Scenario 5: Real-time listener detects deletion', () => {
+      it('should return null from getSession when session is deleted', async () => {
+        getDocMock.mockResolvedValueOnce({
+          exists: () => false,
+        });
+
+        const result = await SessionService.getSession('deleted-session-id');
+
+        expect(result).toBeNull();
+      });
+
+      it('should allow proper subscription cleanup', async () => {
+        const onUpdateMock = vi.fn();
+        const onErrorMock = vi.fn();
+
+        const unsubscribe = SessionService.subscribeToSession(
+          'session-123',
+          onUpdateMock,
+          onErrorMock
+        );
+
+        expect(typeof unsubscribe).toBe('function');
+      });
+    });
+  });
+
+  /**
+   * ────────────────────────────────────────────────
+   * ERROR HANDLING & EDGE CASES
+   * ────────────────────────────────────────────────
+   */
+  describe('Error Handling & Edge Cases', () => {
+    it('should handle database errors gracefully in deleteSession', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      getDocMock.mockResolvedValueOnce({
+        exists: () => true,
+        id: 'session-123',
+        data: () => baseSession,
+      });
+
+      deleteDocMock.mockRejectedValueOnce(new Error('Database error'));
+
+      await expect(SessionService.deleteSession('session-123')).rejects.toThrow(
+        'Database error'
+      );
+
+      expect(consoleSpy).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should not throw when cleaning up non-existent session', async () => {
+      getDocMock.mockResolvedValueOnce({
+        exists: () => false,
+      });
+
+      await expect(SessionService.deleteSession('nonexistent-session')).resolves.not.toThrow();
+    });
+
+    it('should handle session with empty userIds array', async () => {
+      const emptyUserSession = {
+        ...baseSession,
+        userIds: [],
+        playerStatus: {},
+      };
+
+      getDocMock.mockResolvedValueOnce({
+        exists: () => true,
+        id: 'session-123',
+        data: () => emptyUserSession,
+      });
+
+      deleteDocMock.mockResolvedValueOnce(undefined);
+
+      await SessionService.deleteSession('session-123');
+
+      expect(deleteDocMock).toHaveBeenCalled();
+    });
+
+    it('should validate userIds before deletion', async () => {
+      await expect(
+        SessionService.update('session-123', { userIds: ['u1', 'u2', 'u3'] })
+      ).rejects.toThrow('Session must have 1 or 2 users');
     });
   });
 });

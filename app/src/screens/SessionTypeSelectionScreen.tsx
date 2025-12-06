@@ -1,14 +1,17 @@
 // src/screens/SessionTypeSelectionScreen.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Alert,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SessionService } from '../services/firebase/sessionService';
+import { SessionErrorHandler } from '../utils/sessionErrorHandler';
+import { handleSessionExit } from '../utils/sessionExitHandler';
 
 type Props = {
   route: {
@@ -24,6 +27,48 @@ export default function SessionTypeSelectionScreen({ route, navigation }: Props)
   const { sessionId, userId } = route.params;
   const [selectedTypes, setSelectedTypes] = useState<('movie' | 'show')[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Listen for session deletion by other user
+  useEffect(() => {
+    SessionErrorHandler.resetSessionEndedFlag();
+    
+    const unsubscribe = SessionService.subscribeToSession(
+      sessionId,
+      (updatedSession) => {
+        if (!updatedSession) {
+          // Session was deleted by other user
+          SessionErrorHandler.showPartnerLeft({
+            onConfirm: () => navigation.navigate('Home')
+          });
+        }
+      },
+      (error) => {
+        console.error('Error subscribing to session updates:', error);
+      }
+    );
+
+    return () => {
+      unsubscribe();
+      SessionErrorHandler.clearSessionState();
+    };
+  }, [sessionId, navigation]);
+
+  // Handle hardware back button
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleBackPress();
+      return true; // Prevent default back behavior
+    });
+
+    return () => backHandler.remove();
+  }, [sessionId, userId]);
+
+  /**
+   * Handle back button press - delete session and navigate home
+   */
+  const handleBackPress = () => {
+    handleSessionExit(sessionId, navigation);
+  };
 
   const toggleType = (type: 'movie' | 'show') => {
     setSelectedTypes((prev) => {
@@ -66,7 +111,7 @@ export default function SessionTypeSelectionScreen({ route, navigation }: Props)
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={handleBackPress}>
           <Text style={styles.backButton}>←</Text>
         </TouchableOpacity>
       </View>
