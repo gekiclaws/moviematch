@@ -109,6 +109,12 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
     // }
   }, [currentIndex]);
 
+    useEffect(() => {
+      if (modalVisible) {
+        setSelectedMovie(movies[currentIndex]);
+      }
+    }, [currentIndex, modalVisible]);
+
   useEffect(() => {
     if (!showTutorial) return;
 
@@ -191,7 +197,7 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
       console.error('Error loading more movies:', err);
     }
   };
-
+  
   /**
    * Handle swipe left (dislike)
    */
@@ -234,7 +240,8 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
    * Open movie details modal
    */
   const handleOpenDetails = (movie: Media) => {
-    setSelectedMovie(movie);
+    console.log('Opening details for:', movies[currentIndex]); // Debug log
+    setSelectedMovie(movies[currentIndex]);
     setModalVisible(true);
   };
 
@@ -356,7 +363,7 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
           movie={currentMovie}
           onSwipeLeft={handleDislike}
           onSwipeRight={handleLike}
-          onSwipeUp={() => handleOpenDetails(currentMovie)}
+          onSwipeUp={handleOpenDetails}
           isTopCard={true}
         />
       </View>
@@ -457,9 +464,13 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
 
       {/* Movie Details Modal */}
       <MovieDetailsModal
+        key={selectedMovie?.id}
         visible={modalVisible}
         movie={selectedMovie}
-        onClose={() => setModalVisible(false)}
+        onClose={() => {
+          setModalVisible(false);
+          setSelectedMovie(null);
+        }}
       />
     </SafeAreaView>
   );

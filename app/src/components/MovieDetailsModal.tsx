@@ -55,7 +55,7 @@ export default function MovieDetailsModal({
 
           <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
             {/* Poster */}
-            {movie.poster && (
+            {movie.backdrop && (
               <Image
                 source={{ uri: movie.backdrop }}
                 style={styles.modalPoster}

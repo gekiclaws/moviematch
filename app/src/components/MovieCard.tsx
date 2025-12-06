@@ -20,7 +20,7 @@ interface MovieCardProps {
   movie: Media;
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
-  onSwipeUp: () => void;
+  onSwipeUp: (movie: Media) => void;
   isTopCard: boolean;
 }
 
@@ -41,11 +41,11 @@ export default function MovieCard({
       },
       onPanResponderRelease: (_, gesture) => {
         const { dx, dy } = gesture;
-
+        
         // Swipe up for more info
         if (dy < -VERTICAL_THRESHOLD && Math.abs(dx) < 50) {
           resetPosition(); // reset card so it doesn't stay dragged
-          onSwipeUp();       // open modal
+          onSwipeUp(movie);       // open modal
           return;
         }
 
