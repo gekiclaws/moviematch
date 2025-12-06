@@ -268,8 +268,8 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
    * Open movie details modal
    */
   const handleOpenDetails = (movie: Media) => {
-    console.log('Opening details for:', movies[currentIndex]); // Debug log
-    setSelectedMovie(movies[currentIndex]);
+    console.log('Opening details for:', movie); // Debug log
+    setSelectedMovie(movie);
     setModalVisible(true);
   };
 
@@ -503,4 +503,3 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
     </SafeAreaView>
   );
 }
-

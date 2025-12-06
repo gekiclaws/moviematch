@@ -41,8 +41,12 @@ export default function MovieCard({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gesture) =>
         isTopCard &&
-        Math.abs(gesture.dx) > 10 &&
-        Math.abs(gesture.dx) > Math.abs(gesture.dy),
+        (
+          // horizontal swipe
+          (Math.abs(gesture.dx) > 10 && Math.abs(gesture.dx) > Math.abs(gesture.dy)) ||
+          // upward swipe to open details
+          (gesture.dy < -10 && Math.abs(gesture.dy) > Math.abs(gesture.dx))
+        ),
       onPanResponderMove: (_, gesture) => {
         position.setValue({ x: gesture.dx, y: gesture.dy });
       },
