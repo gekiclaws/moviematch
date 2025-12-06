@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SessionService } from '../services/firebase/sessionService';
 import { SessionErrorHandler } from '../utils/sessionErrorHandler';
+import { handleSessionExit } from '../utils/sessionExitHandler';
 
 type Props = {
   route: {
@@ -66,19 +67,7 @@ export default function SessionTypeSelectionScreen({ route, navigation }: Props)
    * Handle back button press - delete session and navigate home
    */
   const handleBackPress = () => {
-    SessionErrorHandler.showExitConfirmation(
-      async () => {
-        try {
-          // Delete session and clean up all users
-          await SessionService.deleteSession(sessionId);
-          navigation.navigate('Home');
-        } catch (error) {
-          console.error('Error deleting session:', error);
-          // Navigate anyway even if deletion fails
-          navigation.navigate('Home');
-        }
-      }
-    );
+    handleSessionExit(sessionId, navigation);
   };
 
   const toggleType = (type: 'movie' | 'show') => {
