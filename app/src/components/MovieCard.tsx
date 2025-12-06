@@ -139,12 +139,12 @@ export default function MovieCard({
       />
 
       {/* Info Overlay */}
-      <TouchableOpacity
-        style={styles.infoOverlay}
-        onPress={onPress}
-        activeOpacity={0.9}
-      >
-        <View style={styles.infoContent}>
+      <View style={styles.infoOverlay}>
+        <TouchableOpacity
+          style={styles.infoContent}
+          onPress={onPress}
+          activeOpacity={0.9}
+        >
           <Text style={styles.title} numberOfLines={2}>
             {movie.title}
           </Text>
@@ -153,23 +153,24 @@ export default function MovieCard({
             {movie.overview}
           </Text>
           <Text style={styles.tapHint}>Tap to read more</Text>
-          <View style={styles.trailerSection}>
-            {showTrailer ? (
-              <TrailerPlayer trailerUrl={movie.trailerUrl} />
-            ) : (
-              !!movie.trailerUrl && (
-                <TouchableOpacity
-                  style={styles.trailerButton}
-                  onPress={() => setShowTrailer(true)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.trailerButtonText}>Watch Trailer</Text>
-                </TouchableOpacity>
-              )
-            )}
-          </View>
+        </TouchableOpacity>
+
+        <View style={styles.trailerSection}>
+          {showTrailer ? (
+            <TrailerPlayer trailerUrl={movie.trailerUrl} />
+          ) : (
+            !!movie.trailerUrl && (
+              <TouchableOpacity
+                style={styles.trailerButton}
+                onPress={() => setShowTrailer(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.trailerButtonText}>Watch Trailer</Text>
+              </TouchableOpacity>
+            )
+          )}
         </View>
-      </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 }
