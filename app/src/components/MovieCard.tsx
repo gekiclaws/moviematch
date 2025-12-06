@@ -36,7 +36,12 @@ export default function MovieCard({
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => isTopCard,
+      // Only start the swipe responder after a horizontal move so taps (e.g. trailer WebView) still work
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gesture) =>
+        isTopCard &&
+        Math.abs(gesture.dx) > 10 &&
+        Math.abs(gesture.dx) > Math.abs(gesture.dy),
       onPanResponderMove: (_, gesture) => {
         position.setValue({ x: gesture.dx, y: gesture.dy });
       },
