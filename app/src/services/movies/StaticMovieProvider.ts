@@ -1,5 +1,5 @@
 import { MovieProvider } from './MovieProvider';
-import { Media } from '@/types/media';
+import type { Media } from '../../types/media';
 import staticMovies from './staticMovies';
 
 type MoviePreferences = Parameters<MovieProvider['getMoviesByPreferences']>[0];

@@ -1,4 +1,4 @@
-import { Media } from '@/types/media';
+import type { Media } from '../../types/media';
 
 const staticMovies: Media[] = [
   {
