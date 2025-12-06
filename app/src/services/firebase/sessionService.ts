@@ -9,6 +9,9 @@ import {
   updateDoc,
   onSnapshot,
   runTransaction,
+  query,
+  where,
+  getDocs,
   Unsubscribe,
 } from 'firebase/firestore';
 
@@ -19,12 +22,73 @@ import { MatchingService } from '../matching/matchingService';
 const collectionRef = collection(db, 'sessions');
 
 export const SessionService = {
+  /**
+   * Generate a unique 6-digit room code
+   */
+  async generateRoomCode(): Promise<string> {
+    const maxAttempts = 10;
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+      // Generate 6-digit code (100000 - 999999)
+      const roomCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Check if code is already in use
+      const isAvailable = await this.isRoomCodeAvailable(roomCode);
+      if (isAvailable) {
+        return roomCode;
+      }
+
+      attempts++;
+    }
+
+    throw new Error('Unable to generate unique room code after multiple attempts');
+  },
+
+  /**
+   * Check if a room code is available
+   */
+  async isRoomCodeAvailable(roomCode: string): Promise<boolean> {
+    const q = query(collectionRef, where('roomCode', '==', roomCode));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.empty;
+  },
+
+  /**
+   * Get session by room code
+   */
+  async getByRoomCode(roomCode: string): Promise<Session | null> {
+    const q = query(collectionRef, where('roomCode', '==', roomCode));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      return null;
+    }
+
+    const docSnap = querySnapshot.docs[0];
+    const data = docSnap.data() as Omit<Session, 'id'> & {
+      playerStatus?: Record<string, PlayerReadiness>;
+    };
+
+    const playerStatus =
+      data.playerStatus ??
+      (Object.fromEntries(
+        data.userIds.map((id) => [id, 'awaiting' as PlayerReadiness])
+      ) as Record<string, PlayerReadiness>);
+
+    return { id: docSnap.id, ...data, playerStatus };
+  },
+
   async create(
     hostId: string,
-    sessionData: Omit<Session, 'id' | 'userIds' | 'playerStatus'>
-  ): Promise<string> {
+    sessionData: Omit<Session, 'id' | 'roomCode' | 'userIds' | 'playerStatus'>
+  ): Promise<{ sessionId: string; roomCode: string }> {
+    // Generate unique room code
+    const roomCode = await this.generateRoomCode();
+
     const data = {
       ...sessionData,
+      roomCode,
       userIds: [hostId],
       sessionStatus: 'awaiting' as const,
       playerStatus: Object.fromEntries([[hostId, 'awaiting' as PlayerReadiness]]) as Record<
@@ -34,7 +98,7 @@ export const SessionService = {
     };
 
     const docRef = await addDoc(collectionRef, data);
-    return docRef.id;
+    return { sessionId: docRef.id, roomCode };
   },
 
   async get(id: string): Promise<Session | null> {
@@ -58,6 +122,20 @@ export const SessionService = {
     return { id: snapshot.id, ...data, playerStatus };
   },
 
+  /**
+   * Get session with proper error handling and encapsulation
+   * @param sessionId - The session ID to retrieve
+   * @returns Promise<Session | null> - Session object or null if not found
+   */
+  async getSession(sessionId: string): Promise<Session | null> {
+    try {
+      return await this.get(sessionId);
+    } catch (error) {
+      console.error(`Error retrieving session ${sessionId}:`, error);
+      return null;
+    }
+  },
+
   async update(id: string, data: Partial<Omit<Session, 'id'>>): Promise<void> {
     if (data.userIds && (data.userIds.length < 1 || data.userIds.length > 2)) {
       throw new Error('Session must have 1 or 2 users');
@@ -74,21 +152,35 @@ export const SessionService = {
 
   // Joining Business Logic
   async getHost(sessionId: string): Promise<string | null> {
-    const session = await this.get(sessionId);
+    const session = await this.getSession(sessionId);
+    if (!session) return null;
+
+    return session.userIds.length > 0 ? session.userIds[0] : null;
+  },
+
+  async getHostByRoomCode(roomCode: string): Promise<string | null> {
+    const session = await this.getByRoomCode(roomCode);
     if (!session) return null;
 
     return session.userIds.length > 0 ? session.userIds[0] : null;
   },
 
   async getStatus(sessionId: string): Promise<Session['sessionStatus'] | null> {
-    const session = await this.get(sessionId);
+    const session = await this.getSession(sessionId);
     if (!session) return null;
 
     return session.sessionStatus;
   },
 
-  async joinSession(sessionId: string, userId: string): Promise<void> {
-    const session = await this.get(sessionId);
+  async getStatusByRoomCode(roomCode: string): Promise<Session['sessionStatus'] | null> {
+    const session = await this.getByRoomCode(roomCode);
+    if (!session) return null;
+
+    return session.sessionStatus;
+  },
+
+  async joinSession(roomCode: string, userId: string): Promise<void> {
+    const session = await this.getByRoomCode(roomCode);
     if (!session) throw new Error('Room does not exist');
 
     // Check if the user can join (< 2 users and not already in session)
@@ -102,11 +194,28 @@ export const SessionService = {
       [userId]: 'awaiting',
     };
 
+    await this.update(session.id, { userIds: updateUserIds, playerStatus: updatedPlayerStatus });
+  },
+
+  // Optional helper if you still need to join by sessionId elsewhere
+  async joinSessionById(sessionId: string, userId: string): Promise<void> {
+    const session = await this.getSession(sessionId);
+    if (!session) throw new Error('Room does not exist');
+
+    if (session.userIds.includes(userId)) throw new Error('User already in room');
+    if (session.userIds.length >= 2) throw new Error('Room is full');
+
+    const updateUserIds = [...session.userIds, userId];
+    const updatedPlayerStatus: Record<string, PlayerReadiness> = {
+      ...session.playerStatus,
+      [userId]: 'awaiting',
+    };
+
     await this.update(sessionId, { userIds: updateUserIds, playerStatus: updatedPlayerStatus });
   },
 
   async leaveSession(sessionId: string, userId: string): Promise<void> {
-    const session = await this.get(sessionId);
+    const session = await this.getSession(sessionId);
     if (!session) throw new Error('Room does not exist');
 
     if (!session.userIds.includes(userId)) throw new Error('User not in room');
@@ -118,7 +227,7 @@ export const SessionService = {
   },
 
   async startMovieMatching(sessionId: string, userId: string): Promise<void> {
-    const session = await this.get(sessionId);
+    const session = await this.getSession(sessionId);
     if (!session) {
       throw new Error('Session does not exist');
     }
@@ -282,7 +391,7 @@ export const SessionService = {
       },
 
       onStatusUpdate: (
-        callback: (status: Session['sessionStatus'] | null, userCount: number) => void,
+       callback: (status: Session['sessionStatus'] | null, userCount: number) => void,
         onError?: (error: Error) => void
       ) => {
         const unsubscribe = this.subscribeToSessionStatus(sessionId, callback, onError);

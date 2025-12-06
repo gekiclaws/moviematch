@@ -15,6 +15,7 @@ export interface MatchedTitle {
 
 export interface Session {
   id: string;
+  roomCode: string; // 6-digit room code for easy sharing
   userIds: string[];
   movieType: Array<'movie' | 'show'>;
   genres: string[];

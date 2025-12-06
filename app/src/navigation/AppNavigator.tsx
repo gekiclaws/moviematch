@@ -72,9 +72,10 @@ export default function AppNavigator() {
                     name='LobbyWaiting'
                     component={LobbyWaitingScreen}
                     options={({ route }) => {
-                        const sessionId = route.params && 'sessionId' in route.params ? route.params.sessionId : 'Unknown';
+                        const roomCode = route.params && 'roomCode' in route.params ? route.params.roomCode : 
+                                       (route.params && 'sessionId' in route.params ? route.params.sessionId : 'Unknown');
                         return {
-                            title: `Room: ${sessionId}`,
+                            title: `Room: ${roomCode}`,
                             backTitle: 'Back to Home', // Custom back title
                             gestureEnabled: false, // Disable swipe back
                         };
@@ -97,7 +98,7 @@ export default function AppNavigator() {
                     name='SuccessfullyJoined'
                     component={SuccessfullyJoinedScreen}
                     options={({ route }) => ({
-                        title: `Room: ${route.params.sessionId}`,
+                        title: `Room: ${route.params.roomCode || route.params.sessionId}`,
                         headerBackTitle: 'Back to Home',
                         gestureEnabled: false
                     })}
