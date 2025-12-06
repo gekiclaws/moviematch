@@ -18,6 +18,7 @@ export interface Media {
   releaseYear?: number;
   genres: string[];
   poster?: string;
+  backdrop?: string;
   directors: string[];
   cast: string[];
   streamingOptions: StreamingGroup[];

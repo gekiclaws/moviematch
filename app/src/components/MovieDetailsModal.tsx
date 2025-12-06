@@ -57,7 +57,7 @@ export default function MovieDetailsModal({
             {/* Poster */}
             {movie.poster && (
               <Image
-                source={{ uri: movie.poster }}
+                source={{ uri: movie.backdrop }}
                 style={styles.modalPoster}
                 resizeMode="cover"
               />
@@ -185,6 +185,7 @@ const styles = StyleSheet.create({
     height: 300,
     borderRadius: 10,
     marginBottom: 20,
+    paddingTop: 30
   },
   titleSection: {
     marginBottom: 20,

@@ -14,12 +14,13 @@ import type { Media } from '../types/media';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 120;
+const VERTICAL_THRESHOLD = 80; // swipe-up distance
 
 interface MovieCardProps {
   movie: Media;
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
-  onPress: () => void;
+  onSwipeUp: () => void;
   isTopCard: boolean;
 }
 
@@ -27,11 +28,11 @@ export default function MovieCard({
   movie,
   onSwipeLeft,
   onSwipeRight,
-  onPress,
+  onSwipeUp,
   isTopCard,
 }: MovieCardProps) {
   const position = useRef(new Animated.ValueXY()).current;
-
+  
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => isTopCard,
@@ -39,17 +40,23 @@ export default function MovieCard({
         position.setValue({ x: gesture.dx, y: gesture.dy });
       },
       onPanResponderRelease: (_, gesture) => {
-        if (gesture.dx > SWIPE_THRESHOLD) {
-          // Swipe right (like)
+        const { dx, dy } = gesture;
+
+        // Swipe up for more info
+        if (dy < -VERTICAL_THRESHOLD && Math.abs(dx) < 50) {
+          resetPosition(); // reset card so it doesn't stay dragged
+          onSwipeUp();       // open modal
+          return;
+        }
+
+        if (dx > SWIPE_THRESHOLD) {
           forceSwipe('right');
-        } else if (gesture.dx < -SWIPE_THRESHOLD) {
-          // Swipe left (dislike)
+        } else if (dx < -SWIPE_THRESHOLD) {
           forceSwipe('left');
         } else {
-          // Return to center
           resetPosition();
         }
-      },
+      }
     })
   ).current;
 
@@ -137,10 +144,8 @@ export default function MovieCard({
       />
 
       {/* Info Overlay */}
-      <TouchableOpacity
+      <View
         style={styles.infoOverlay}
-        onPress={onPress}
-        activeOpacity={0.9}
       >
         <View style={styles.infoContent}>
           <Text style={styles.title} numberOfLines={2}>
@@ -150,9 +155,9 @@ export default function MovieCard({
           <Text style={styles.overview} numberOfLines={3}>
             {movie.overview}
           </Text>
-          <Text style={styles.tapHint}>Tap to read more</Text>
+          
         </View>
-      </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 }

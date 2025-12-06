@@ -34,6 +34,7 @@ const transformShowToMedia = (show: any): Media => {
     releaseYear: show.releaseYear,
     genres: (show.genres || []).map((g: any) => g.name || g),
     poster: show.imageSet?.verticalPoster?.w720,
+    backdrop: show.imageSet?.horizontalBackdrop?.w720,
     directors: show.directors || [],
     cast: show.cast || [],
     streamingOptions: Object.entries(show.streamingOptions || {}).map(
