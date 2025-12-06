@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, ActivityIndicator, Alert, TouchableOpacity, BackHandler } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { SessionService } from '../services/firebase/sessionService';
 import { Session } from '../types/session';
 import type { Unsubscribe } from 'firebase/firestore';
 import { SuccessfullyJoinedStyles as styles } from '../styles/SuccessfullyJoinedStyles';
+import { SessionErrorHandler } from '../utils/sessionErrorHandler';
 
 type Props = StackScreenProps<RootStackParamList, 'SuccessfullyJoined'>;
 
@@ -58,6 +59,7 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
   const setupSessionListener = () => {
     try {
       console.log('Setting up session listener for:', sessionId);
+      SessionErrorHandler.resetSessionEndedFlag();
       
       sessionListenerRef.current?.();
 
@@ -73,16 +75,10 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
             }
           } else {
             // Session was deleted
-            Alert.alert(
-              'Session Ended',
-              'The host has ended the session.',
-              [
-                {
-                  text: 'OK',
-                  onPress: () => navigation.navigate('Home')
-                }
-              ]
-            );
+            SessionErrorHandler.showSessionEnded({
+              message: 'The host has ended the session.',
+              onConfirm: () => navigation.navigate('Home')
+            });
           }
         },
         (error) => {
@@ -174,6 +170,27 @@ export const SuccessfullyJoinedScreen: React.FC<Props> = ({ route, navigation })
       triggerAutoNavigation(session);
     }
   }, [session?.sessionStatus]);
+
+  // Handle hardware back button - prevent guest from leaving while waiting
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      Alert.alert(
+        'Leave Session',
+        'Are you sure you want to leave? The host has not started yet.',
+        [
+          { text: 'Stay', style: 'cancel' },
+          {
+            text: 'Leave',
+            style: 'destructive',
+            onPress: () => navigation.navigate('Home')
+          }
+        ]
+      );
+      return true; // Prevent default back behavior
+    });
+
+    return () => backHandler.remove();
+  }, []);
 
   // Show loading state
   if (isLoading) {

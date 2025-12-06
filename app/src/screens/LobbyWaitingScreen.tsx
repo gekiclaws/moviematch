@@ -7,6 +7,7 @@ import {
   Alert,
   ActivityIndicator,
   Clipboard,
+  BackHandler,
 } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../types/navigation';
@@ -57,6 +58,16 @@ export default function LobbyWaitingScreen({ navigation, route }: Props) {
       unsubscribeFunctions.forEach(unsubscribe => unsubscribe());
     };
   }, []);
+
+  // Handle hardware back button
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleLeaveSession();
+      return true; // Prevent default back behavior
+    });
+
+    return () => backHandler.remove();
+  }, [sessionId, userId]);
 
   /**
    * Load initial session and user data
@@ -210,7 +221,17 @@ export default function LobbyWaitingScreen({ navigation, route }: Props) {
         {
           text: 'Cancel Session',
           style: 'destructive',
-          onPress: () => navigation.navigate('Home')
+          onPress: async () => {
+            try {
+              // Delete session and clean up all users
+              await SessionService.deleteSession(sessionId);
+              navigation.navigate('Home');
+            } catch (error) {
+              console.error('Error deleting session:', error);
+              // Navigate anyway even if deletion fails
+              navigation.navigate('Home');
+            }
+          }
         }
       ]
     );

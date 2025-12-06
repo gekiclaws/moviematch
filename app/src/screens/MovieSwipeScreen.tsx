@@ -8,12 +8,14 @@ import {
   TouchableOpacity,
   Dimensions,
   Alert,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getMoviesByPreferences } from '../services/api/mediaApiService';
 import { SwipeService } from '../services/firebase/swipeService';
 import { SessionService } from '../services/firebase/sessionService';
 import { UserService } from '../services/firebase/userService';
+import { SessionErrorHandler } from '../utils/sessionErrorHandler';
 import MovieCard from '../components/MovieCard';
 import MovieDetailsModal from '../components/MovieDetailsModal';
 import type { Media } from '../types/media';
@@ -50,12 +52,29 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
     loadUserAndMovies();
   }, []);
 
+  // Handle hardware back button
   useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleBackPress();
+      return true; // Prevent default back behavior
+    });
+
+    return () => backHandler.remove();
+  }, [sessionId, userId]);
+
+  useEffect(() => {
+    SessionErrorHandler.resetSessionEndedFlag();
+    
     const unsubscribe = SessionService.subscribeToSession(
       sessionId,
       (updatedSession) => {
-        if (
-          updatedSession?.sessionStatus === 'complete' &&
+        if (!updatedSession) {
+          // Session was deleted
+          SessionErrorHandler.showSessionEnded({
+            onConfirm: () => navigation.navigate('Home')
+          });
+        } else if (
+          updatedSession.sessionStatus === 'complete' &&
           !hasNavigatedRef.current
         ) {
           hasNavigatedRef.current = true;
@@ -71,6 +90,7 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
 
     return () => {
       unsubscribe();
+      SessionErrorHandler.clearSessionState();
     };
   }, [navigation, sessionId]);
 
@@ -80,6 +100,25 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
     //   loadMoreMovies();
     // }
   }, [currentIndex]);
+
+  /**
+   * Handle back button press - delete session and navigate home
+   */
+  const handleBackPress = () => {
+    SessionErrorHandler.showExitConfirmation(
+      async () => {
+        try {
+          // Delete session and clean up all users
+          await SessionService.deleteSession(sessionId);
+          navigation.navigate('Home');
+        } catch (error) {
+          console.error('Error deleting session:', error);
+          // Navigate anyway even if deletion fails
+          navigation.navigate('Home');
+        }
+      }
+    );
+  };
 
   /**
    * Load user data and initial movies
@@ -261,7 +300,7 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={handleBackPress}>
           <Text style={styles.backButton}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
