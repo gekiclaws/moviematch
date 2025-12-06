@@ -19,6 +19,7 @@ const {
   runTransactionMock,
   transactionGetMock,
   transactionUpdateMock,
+  onSnapshotMock,
 } = vi.hoisted(() => {
   const doc = vi.fn((_db, _collection, id) => ({ path: `sessions/${id}` }));
 
@@ -35,6 +36,7 @@ const {
     runTransactionMock: vi.fn(),
     transactionGetMock: vi.fn(),
     transactionUpdateMock: vi.fn(),
+    onSnapshotMock: vi.fn(),
   };
 });
 
@@ -54,6 +56,7 @@ vi.mock('firebase/firestore', () => ({
   where: whereMock,
   getDocs: getDocsMock,
   runTransaction: runTransactionMock,
+  onSnapshot: onSnapshotMock,
 }));
 
 vi.mock('../../../../services/firebase/index', () => ({
@@ -103,6 +106,7 @@ describe('SessionService', () => {
     whereMock.mockReturnValue('mockWhere');
 
     getDocsMock.mockReset();
+    onSnapshotMock.mockReset();
 
     transactionGetMock.mockReset();
     transactionUpdateMock.mockReset();
@@ -113,6 +117,44 @@ describe('SessionService', () => {
         update: transactionUpdateMock,
       })
     );
+
+    onSnapshotMock.mockImplementation(() => () => {});
+  });
+
+  /**
+   * ────────────────────────────────────────────────
+   * ROOM CODE GENERATION
+   * ────────────────────────────────────────────────
+   */
+  describe('generateRoomCode', () => {
+    it('retries until an available room code is found', async () => {
+      const availabilitySpy = vi
+        .spyOn(SessionService, 'isRoomCodeAvailable')
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(true);
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.123456);
+
+      const roomCode = await SessionService.generateRoomCode();
+
+      expect(roomCode).toMatch(/^[0-9]{6}$/);
+      expect(availabilitySpy).toHaveBeenCalledTimes(2);
+
+      availabilitySpy.mockRestore();
+      randomSpy.mockRestore();
+    });
+
+    it('throws after max attempts when all codes are taken', async () => {
+      const availabilitySpy = vi.spyOn(SessionService, 'isRoomCodeAvailable').mockResolvedValue(false);
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      await expect(SessionService.generateRoomCode()).rejects.toThrow(
+        'Unable to generate unique room code after multiple attempts'
+      );
+      expect(availabilitySpy).toHaveBeenCalledTimes(10);
+
+      availabilitySpy.mockRestore();
+      randomSpy.mockRestore();
+    });
   });
 
   /**
@@ -186,6 +228,30 @@ describe('SessionService', () => {
     expect(result).toEqual({ id: 'existing-id', ...storedSession });
   });
 
+  it('fills playerStatus when missing from stored session', async () => {
+    const { playerStatus: _unused, ...sessionWithoutStatus } = baseSession;
+
+    getDocMock.mockResolvedValueOnce({
+      exists: () => true,
+      id: 'existing-id',
+      data: () => sessionWithoutStatus,
+    });
+
+    const result = await SessionService.get('existing-id');
+    expect(result?.playerStatus).toEqual({ 'user-1': 'awaiting' });
+  });
+
+  describe('getSession', () => {
+    it('returns null when get throws an error', async () => {
+      const getSpy = vi.spyOn(SessionService, 'get').mockRejectedValueOnce(new Error('boom'));
+
+      const result = await SessionService.getSession('bad-id');
+
+      expect(result).toBeNull();
+      getSpy.mockRestore();
+    });
+  });
+
   /**
    * ────────────────────────────────────────────────
    * UPDATE
@@ -230,6 +296,13 @@ describe('SessionService', () => {
       const ok = await SessionService.isRoomCodeAvailable('123456');
       expect(ok).toBe(true);
     });
+
+    it('returns false when query has results', async () => {
+      getDocsMock.mockResolvedValueOnce({ empty: false });
+
+      const ok = await SessionService.isRoomCodeAvailable('123456');
+      expect(ok).toBe(false);
+    });
   });
 
   describe('getByRoomCode', () => {
@@ -246,6 +319,29 @@ describe('SessionService', () => {
 
       const result = await SessionService.getByRoomCode('123456');
       expect(result).toEqual({ id: 'id1', ...baseSession });
+    });
+
+    it('returns null when session is missing', async () => {
+      getDocsMock.mockResolvedValueOnce({ empty: true });
+
+      const result = await SessionService.getByRoomCode('missing');
+      expect(result).toBeNull();
+    });
+
+    it('fills playerStatus when absent', async () => {
+      const { playerStatus: _unused, ...sessionWithoutStatus } = baseSession;
+      getDocsMock.mockResolvedValueOnce({
+        empty: false,
+        docs: [
+          {
+            id: 'id1',
+            data: () => sessionWithoutStatus,
+          },
+        ],
+      });
+
+      const result = await SessionService.getByRoomCode('123456');
+      expect(result?.playerStatus).toEqual({ 'user-1': 'awaiting' });
     });
   });
 
@@ -269,6 +365,76 @@ describe('SessionService', () => {
     });
   });
 
+  describe('getHostByRoomCode', () => {
+    it('returns host from room code', async () => {
+      const sess = { ...baseSession, userIds: ['host', 'guest'] };
+
+      getDocsMock.mockResolvedValueOnce({
+        empty: false,
+        docs: [
+          {
+            id: 'id1',
+            data: () => sess,
+          },
+        ],
+      });
+
+      const host = await SessionService.getHostByRoomCode('123456');
+      expect(host).toBe('host');
+    });
+
+    it('returns null when session not found', async () => {
+      getDocsMock.mockResolvedValueOnce({ empty: true });
+
+      const host = await SessionService.getHostByRoomCode('missing');
+      expect(host).toBeNull();
+    });
+  });
+
+  describe('getStatus', () => {
+    it('returns session status when session exists', async () => {
+      getDocMock.mockResolvedValueOnce({
+        exists: () => true,
+        id: 'id',
+        data: () => baseSession,
+      });
+
+      const status = await SessionService.getStatus('id');
+      expect(status).toBe('awaiting');
+    });
+
+    it('returns null when session missing', async () => {
+      getDocMock.mockResolvedValueOnce({ exists: () => false });
+
+      const status = await SessionService.getStatus('missing');
+      expect(status).toBeNull();
+    });
+  });
+
+  describe('getStatusByRoomCode', () => {
+    it('returns status from room code', async () => {
+      getDocsMock.mockResolvedValueOnce({
+        empty: false,
+        docs: [
+          {
+            id: 'id1',
+            data: () => baseSession,
+          },
+        ],
+      });
+
+      const status = await SessionService.getStatusByRoomCode('123456');
+      expect(status).toBe('awaiting');
+    });
+
+    it('returns null when session not found for room code', async () => {
+      getDocsMock.mockResolvedValueOnce({ empty: true });
+
+      const status = await SessionService.getStatusByRoomCode('missing');
+      expect(status).toBeNull();
+    });
+  });
+
   /**
    * ────────────────────────────────────────────────
    * JOIN
@@ -286,6 +452,42 @@ describe('SessionService', () => {
 
       expect(updateDocMock).toHaveBeenCalled();
     });
+
+    it('throws when room does not exist', async () => {
+      getDocsMock.mockResolvedValueOnce({ empty: true });
+
+      await expect(SessionService.joinSession('bad-room', 'user')).rejects.toThrow(
+        'Room does not exist'
+      );
+    });
+
+    it('throws when user already in session', async () => {
+      const sess = { ...baseSession, userIds: ['host'], playerStatus: { host: 'awaiting' } };
+      getDocsMock.mockResolvedValueOnce({
+        empty: false,
+        docs: [{ id: 'id', data: () => ({ ...sess, userIds: ['host', 'host'] }) }],
+      });
+
+      await expect(SessionService.joinSession('123456', 'host')).rejects.toThrow(
+        'User already in room'
+      );
+    });
+
+    it('throws when room is full', async () => {
+      const sess = {
+        ...baseSession,
+        userIds: ['host', 'guest'],
+        playerStatus: { host: 'awaiting', guest: 'awaiting' },
+      };
+      getDocsMock.mockResolvedValueOnce({
+        empty: false,
+        docs: [{ id: 'id', data: () => sess }],
+      });
+
+      await expect(SessionService.joinSession('123456', 'new-user')).rejects.toThrow(
+        'Room is full'
+      );
+    });
   });
 
   /**
@@ -293,6 +495,67 @@ describe('SessionService', () => {
    * LEAVE
    * ────────────────────────────────────────────────
    */
+  describe('joinSessionById', () => {
+    it('adds user by session id', async () => {
+      const sess = {
+        ...baseSession,
+        userIds: ['host'],
+        playerStatus: { host: 'awaiting' },
+      };
+
+      getDocMock.mockResolvedValueOnce({
+        exists: () => true,
+        id: 'id',
+        data: () => sess,
+      });
+
+      await SessionService.joinSessionById('id', 'guest');
+
+      expect(updateDocMock).toHaveBeenCalledWith({ path: 'sessions/id' }, {
+        userIds: ['host', 'guest'],
+        playerStatus: { host: 'awaiting', guest: 'awaiting' },
+      });
+    });
+
+    it('throws when session is missing', async () => {
+      getDocMock.mockResolvedValueOnce({ exists: () => false });
+
+      await expect(SessionService.joinSessionById('missing', 'guest')).rejects.toThrow(
+        'Room does not exist'
+      );
+    });
+
+    it('throws when user already in room', async () => {
+      const sess = { ...baseSession, userIds: ['host'], playerStatus: { host: 'awaiting' } };
+      getDocMock.mockResolvedValueOnce({
+        exists: () => true,
+        id: 'id',
+        data: () => ({ ...sess, userIds: ['host', 'host'] }),
+      });
+
+      await expect(SessionService.joinSessionById('id', 'host')).rejects.toThrow(
+        'User already in room'
+      );
+    });
+
+    it('throws when room is full', async () => {
+      const sess = {
+        ...baseSession,
+        userIds: ['host', 'guest'],
+        playerStatus: { host: 'awaiting', guest: 'awaiting' },
+      };
+      getDocMock.mockResolvedValueOnce({
+        exists: () => true,
+        id: 'id',
+        data: () => sess,
+      });
+
+      await expect(SessionService.joinSessionById('id', 'new-user')).rejects.toThrow(
+        'Room is full'
+      );
+    });
+  });
+
   describe('leaveSession', () => {
     it('removes user', async () => {
       const sess = {
@@ -310,6 +573,26 @@ describe('SessionService', () => {
       await SessionService.leaveSession('id', 'guest');
 
       expect(updateDocMock).toHaveBeenCalled();
+    });
+
+    it('throws when session does not exist', async () => {
+      getDocMock.mockResolvedValueOnce({ exists: () => false });
+
+      await expect(SessionService.leaveSession('missing', 'user')).rejects.toThrow(
+        'Room does not exist'
+      );
+    });
+
+    it('throws when user not in session', async () => {
+      const sess = { ...baseSession, userIds: ['someone'], playerStatus: { someone: 'awaiting' } };
+
+      getDocMock.mockResolvedValueOnce({
+        exists: () => true,
+        id: 'id',
+        data: () => sess,
+      });
+
+      await expect(SessionService.leaveSession('id', 'ghost')).rejects.toThrow('User not in room');
     });
   });
 
@@ -332,6 +615,40 @@ describe('SessionService', () => {
       await SessionService.startMovieMatching('id', 'host');
 
       expect(updateDocMock).toHaveBeenCalled();
+    });
+
+    it('throws when session does not exist', async () => {
+      getDocMock.mockResolvedValueOnce({ exists: () => false });
+
+      await expect(SessionService.startMovieMatching('id', 'host')).rejects.toThrow(
+        'Session does not exist'
+      );
+    });
+
+    it('throws when non-host attempts to start', async () => {
+      const sess = {
+        ...baseSession,
+        userIds: ['host', 'guest'],
+        playerStatus: { host: 'awaiting', guest: 'awaiting' },
+      };
+
+      getDocMock.mockResolvedValueOnce({ exists: () => true, id: 'id', data: () => sess });
+      getDocMock.mockResolvedValueOnce({ exists: () => true, id: 'id', data: () => sess });
+
+      await expect(SessionService.startMovieMatching('id', 'guest')).rejects.toThrow(
+        'Only the host can start the session'
+      );
+    });
+
+    it('throws when user count is not two', async () => {
+      const sess = { ...baseSession, userIds: ['host'], playerStatus: { host: 'awaiting' } };
+
+      getDocMock.mockResolvedValueOnce({ exists: () => true, id: 'id', data: () => sess });
+      getDocMock.mockResolvedValueOnce({ exists: () => true, id: 'id', data: () => sess });
+
+      await expect(SessionService.startMovieMatching('id', 'host')).rejects.toThrow(
+        'Session must have exactly 2 users to start'
+      );
     });
   });
 
@@ -379,6 +696,165 @@ describe('SessionService', () => {
       expect(transactionUpdateMock).toHaveBeenCalled();
       const [, payload] = transactionUpdateMock.mock.calls[0];
       expect(payload.sessionStatus).toBe('complete');
+    });
+
+    it('throws when user not in session', async () => {
+      const sess = { ...baseSession, userIds: ['u1'], playerStatus: { u1: 'awaiting' } };
+
+      transactionGetMock.mockResolvedValueOnce({
+        exists: () => true,
+        data: () => sess,
+      });
+
+      await expect(SessionService.markPlayerFinished('session-id', 'unknown')).rejects.toThrow(
+        'User not part of this session'
+      );
+      expect(transactionUpdateMock).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when user already done', async () => {
+      const sess = {
+        ...baseSession,
+        userIds: ['u1', 'u2'],
+        playerStatus: { u1: 'done', u2: 'awaiting' },
+      };
+
+      transactionGetMock.mockResolvedValueOnce({
+        exists: () => true,
+        data: () => sess,
+      });
+
+      await SessionService.markPlayerFinished('session-id', 'u1');
+
+      expect(transactionUpdateMock).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * ────────────────────────────────────────────────
+   * SUBSCRIPTIONS
+   * ────────────────────────────────────────────────
+   */
+  describe('subscribeToSession', () => {
+    it('emits session with synthesized playerStatus', () => {
+      const unsubscribe = vi.fn();
+      onSnapshotMock.mockImplementation((_ref, onNext) => {
+        onNext({
+          exists: () => true,
+          id: 'sess-1',
+          data: () => {
+            const { playerStatus, ...rest } = baseSession;
+            return rest;
+          },
+        });
+        return unsubscribe;
+      });
+
+      const onUpdate = vi.fn();
+      const result = SessionService.subscribeToSession('sess-1', onUpdate);
+
+      expect(onUpdate).toHaveBeenCalledWith({
+        id: 'sess-1',
+        ...baseSession,
+        playerStatus: { 'user-1': 'awaiting' },
+      });
+      expect(result).toBe(unsubscribe);
+    });
+
+    it('forwards errors to callback', () => {
+      const unsubscribe = vi.fn();
+      const error = new Error('listener error');
+      onSnapshotMock.mockImplementation((_ref, _onNext, onError) => {
+        onError?.(error);
+        return unsubscribe;
+      });
+
+      const onError = vi.fn();
+      SessionService.subscribeToSession('sess-1', vi.fn(), onError);
+
+      expect(onError).toHaveBeenCalledWith(error);
+    });
+  });
+
+  describe('subscribeToSessionStatus', () => {
+    it('emits status and user count', () => {
+      const unsubscribe = vi.fn();
+      onSnapshotMock.mockImplementation((_ref, onNext) => {
+        onNext({
+          exists: () => true,
+          data: () => ({ ...baseSession }),
+        });
+        return unsubscribe;
+      });
+
+      const onStatusChange = vi.fn();
+      const result = SessionService.subscribeToSessionStatus('sess-1', onStatusChange);
+
+      expect(onStatusChange).toHaveBeenCalledWith('awaiting', 1);
+      expect(result).toBe(unsubscribe);
+    });
+
+    it('emits null status when session missing', () => {
+      const unsubscribe = vi.fn();
+      onSnapshotMock.mockImplementation((_ref, onNext) => {
+        onNext({
+          exists: () => false,
+        });
+        return unsubscribe;
+      });
+
+      const onStatusChange = vi.fn();
+      SessionService.subscribeToSessionStatus('sess-1', onStatusChange);
+
+      expect(onStatusChange).toHaveBeenCalledWith(null, 0);
+    });
+
+    it('reports listener errors', () => {
+      const unsubscribe = vi.fn();
+      const error = new Error('status error');
+      onSnapshotMock.mockImplementation((_ref, _onNext, onError) => {
+        onError?.(error);
+        return unsubscribe;
+      });
+
+      const onError = vi.fn();
+      SessionService.subscribeToSessionStatus('sess-1', vi.fn(), onError);
+
+      expect(onError).toHaveBeenCalledWith(error);
+    });
+  });
+
+  describe('createSessionListeners', () => {
+    it('wires callbacks and cleans up', () => {
+      const unsubSession = vi.fn();
+      const unsubStatus = vi.fn();
+      const subscribeSessionSpy = vi
+        .spyOn(SessionService, 'subscribeToSession')
+        .mockReturnValue(unsubSession);
+      const subscribeStatusSpy = vi
+        .spyOn(SessionService, 'subscribeToSessionStatus')
+        .mockReturnValue(unsubStatus);
+
+      const listeners = SessionService.createSessionListeners('sess-1');
+
+      const onSessionUpdate = vi.fn();
+      const onStatusUpdate = vi.fn();
+
+      const returnedSessionUnsub = listeners.onSessionUpdate(onSessionUpdate);
+      const returnedStatusUnsub = listeners.onStatusUpdate(onStatusUpdate);
+
+      expect(subscribeSessionSpy).toHaveBeenCalledWith('sess-1', onSessionUpdate, undefined);
+      expect(subscribeStatusSpy).toHaveBeenCalledWith('sess-1', onStatusUpdate, undefined);
+      expect(returnedSessionUnsub).toBe(unsubSession);
+      expect(returnedStatusUnsub).toBe(unsubStatus);
+
+      listeners.cleanup();
+
+      expect(unsubSession).toHaveBeenCalled();
+      expect(unsubStatus).toHaveBeenCalled();
+
+      subscribeSessionSpy.mockRestore();
+      subscribeStatusSpy.mockRestore();
     });
   });
 });
