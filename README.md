@@ -1,5 +1,9 @@
 # moviematch
 
+## Env setup
+
+In the `app` folder, copy `.env.sample`, rename it to `.env`, then insert your `MOVIE_API_KEY`.
+
 ## Expo frontend setup
 
 1. Install Node.js 18 LTS or newer. The Expo CLI is bundled with the project, so no global install is required.
