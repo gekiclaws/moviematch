@@ -1,33 +1,18 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { WebView } from 'react-native-webview';
+import YoutubePlayer from 'react-native-youtube-iframe';
 
-type TrailerPlayerProps = {
-  trailerUrl?: string;
-};
-
-export function TrailerPlayer({ trailerUrl }: TrailerPlayerProps) {
+export function TrailerPlayer({ trailerUrl }: { trailerUrl?: string }) {
   if (!trailerUrl) return null;
 
+  const videoId = trailerUrl.split('embed/')[1];
+
   return (
-    <View style={styles.container}>
-      <WebView
-        source={{ uri: trailerUrl }}
-        style={styles.webview}
-        allowsFullscreenVideo
+    <View style={{ width: '100%', height: 220 }}>
+      <YoutubePlayer
+        height={220}
+        videoId={videoId}
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-    height: 200,
-    overflow: 'hidden',
-    borderRadius: 12,
-  },
-  webview: {
-    flex: 1,
-  },
-});
