@@ -23,6 +23,7 @@ interface MovieCardProps {
   onSwipeRight: () => void;
   onSwipeUp: (movie: Media) => void;
   isTopCard: boolean;
+  disableSwipes?: boolean;
 }
 
 export default function MovieCard({
@@ -31,6 +32,7 @@ export default function MovieCard({
   onSwipeRight,
   onSwipeUp,
   isTopCard,
+  disableSwipes = false,
 }: MovieCardProps) {
   const position = useRef(new Animated.ValueXY()).current;
   const [showTrailer, setShowTrailer] = useState(false);
@@ -41,6 +43,7 @@ export default function MovieCard({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gesture) =>
         isTopCard &&
+        !disableSwipes &&
         (
           // horizontal swipe
           (Math.abs(gesture.dx) > 10 && Math.abs(gesture.dx) > Math.abs(gesture.dy)) ||
@@ -128,7 +131,7 @@ export default function MovieCard({
   return (
     <Animated.View
       style={[styles.card, isTopCard && getCardStyle()]}
-      {...(isTopCard ? panResponder.panHandlers : {})}
+      {...(isTopCard && !disableSwipes ? panResponder.panHandlers : {})}
     >
       {/* Like/Dislike Overlays */}
       {isTopCard && (

@@ -52,6 +52,7 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
   const [showTutorialChoice, setShowTutorialChoice] = useState(true); // Ask user to start tutorial
   const [showTutorial, setShowTutorial] = useState(false);            // Animate tutorial steps
   const [tutorialStep, setTutorialStep] = useState(0);                // 0=left, 1=right, 2=info
+  const [isTutorial, setIsTutorial] = useState(false);                // Gate swipes during tutorial
   const hasMarkedFinishedRef = useRef(false);
   const hasNavigatedRef = useRef(false);
   const arrowAnim = useRef(new Animated.Value(0)).current;
@@ -152,6 +153,7 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
       timer = setTimeout(() => {
         setShowTutorial(false);
         setTutorialStep(0);
+        setIsTutorial(false);
       }, tutorialTime);
     }
 
@@ -227,11 +229,32 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
   };
   
   /**
+   * Advance through tutorial steps without recording a real swipe
+   */
+  const handleTutorialAdvance = () => {
+    if (!isTutorial) return;
+
+    if (tutorialStep < 2) {
+      setTutorialStep((prev) => Math.min(prev + 1, 2));
+      return;
+    }
+
+    setShowTutorial(false);
+    setTutorialStep(0);
+    setIsTutorial(false);
+  };
+  
+  /**
    * Handle swipe left (dislike)
    */
   const handleDislike = async () => {
     const movie = movies[currentIndex];
     if (!movie) return;
+
+    if (isTutorial) {
+      handleTutorialAdvance();
+      return;
+    }
 
     try {
       // Save swipe to Firebase
@@ -252,6 +275,11 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
     const movie = movies[currentIndex];
     if (!movie) return;
 
+    if (isTutorial) {
+      handleTutorialAdvance();
+      return;
+    }
+
     try {
       // Save swipe to Firebase
       await SwipeService.addSwipeToSession(sessionId, userId, movie, 'like');
@@ -268,6 +296,11 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
    * Open movie details modal
    */
   const handleOpenDetails = (movie: Media) => {
+    if (isTutorial) {
+      handleTutorialAdvance();
+      return;
+    }
+
     console.log('Opening details for:', movie); // Debug log
     setSelectedMovie(movie);
     setModalVisible(true);
@@ -277,10 +310,12 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
    * Force swipe via buttons
    */
   const handleDislikeButton = () => {
+    if (isTutorial) return;
     handleDislike();
   };
 
   const handleLikeButton = () => {
+    if (isTutorial) return;
     handleLike();
   };
 
@@ -359,6 +394,7 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
                 setShowTutorialChoice(false);
                 setShowTutorial(true);
                 setTutorialStep(0);
+                setIsTutorial(true);
               }}
             >
               <Text style={styles.tutorialButtonText}>Start Tutorial</Text>
@@ -393,6 +429,7 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
           onSwipeRight={handleLike}
           onSwipeUp={handleOpenDetails}
           isTopCard={true}
+          disableSwipes={isTutorial}
         />
       </View>
 
