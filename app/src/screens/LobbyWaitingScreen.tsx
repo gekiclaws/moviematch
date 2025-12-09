@@ -186,9 +186,11 @@ export default function LobbyWaitingScreen({ navigation, route }: Props) {
       // Start the session using SessionService
       await SessionService.startMovieMatching(sessionId, userId);
 
-      navigation.navigate('SessionTypeSelection', {
+      navigation.navigate('MovieSwipe', {
         sessionId: sessionId,
         userId: userId,
+        sessionTypes: session.movieType?.length ? session.movieType : undefined,
+        session,
       });
 
     } catch (error) {
@@ -425,5 +427,4 @@ export default function LobbyWaitingScreen({ navigation, route }: Props) {
     </SafeAreaView>
   );
 }
-
 
