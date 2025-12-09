@@ -15,6 +15,7 @@ import { UserService } from '../services/firebase/userService';
 import { UserManager } from '../services/firebase/userManager';
 import { STREAMING_PLATFORMS } from '../types/platform';
 import { styles } from "../styles/PlatformSelectionStyles";
+import { ImageSourcePropType } from 'react-native';
 
 type Props = {
   route: {
@@ -118,7 +119,7 @@ export default function PlatformSelectionScreen({ route, navigation }: Props) {
       <SelectableCard
         id={item.id}
         label={item.name}
-        emoji={getPlatformEmoji(item.name)}
+        image={getPlatformImage(item.name)}
         isSelected={isSelected}
         onPress={togglePlatform}
       />
@@ -198,17 +199,19 @@ export default function PlatformSelectionScreen({ route, navigation }: Props) {
   );
 }
 
-const getPlatformEmoji = (platformName: string): string => {
-  const emojiMap: { [key: string]: string } = {
-    'Netflix': '🎬',
-    'Prime Video': '📦',
-    'Disney+': '🏰',
-    'Max': '🎭',
-    'Hulu': '🟢',
-    'Apple TV+': '🍎',
-    'Paramount+': '⛰️',
-    'Peacock': '🦚',
+const getPlatformImage = (platformName: string): ImageSourcePropType => {
+  const imageMap: { [key: string]: ImageSourcePropType } = {
+    'Action': require('../../assets/genres/action.png'),
+    'Apple TV+' : require("../../assets/platforms/apple.png"),
+    'CrunchyRoll' : require("../../assets/platforms/crunchyroll.png"),
+    'Disney+' : require("../../assets/platforms/disney.png"),
+    'Hulu' : require("../../assets/platforms/hulu.png"),
+    'Max' : require("../../assets/platforms/max.png"),
+    'Netflix' : require("../../assets/platforms/netflix.png"),
+    "Paramount+" : require("../../assets/platforms/paramount.png"),
+    "Peacock" : require("../../assets/platforms/peacock.jpg"),
+    "Prime Video" : require("../../assets/platforms/prime.png")
   };
 
-  return emojiMap[platformName] || '📺';
+  return imageMap[platformName];
 };

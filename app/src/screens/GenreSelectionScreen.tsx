@@ -15,6 +15,7 @@ import SelectableCard from "../components/SelectableCard";
 import { UserService } from '../services/firebase/userService';
 import { UserManager } from '../services/firebase/userManager';
 import { styles } from '../styles/GenreSelectionStyles';
+import { ImageSourcePropType } from 'react-native';
 
 type Props = {
   route: {
@@ -135,7 +136,7 @@ export default function GenreSelectionScreen({ route, navigation }: Props) {
       <SelectableCard
         id={item.id}
         label={item.name}
-        emoji={getGenreEmoji(item.name)}
+        image = {getGenreImage(item.name)}
         isSelected={isSelected}
         onPress={toggleGenre}
       />
@@ -209,28 +210,30 @@ export default function GenreSelectionScreen({ route, navigation }: Props) {
   );
 }
 
-// Helper for emojis
-const getGenreEmoji = (genreName: string): string => {
-  const emojiMap: { [key: string]: string } = {
-    'Action': '🎬',
-    'Adventure': '🗺️',
-    'Animation': '🎨',
-    'Comedy': '😂',
-    'Crime': '🔫',
-    'Documentary': '📹',
-    'Drama': '🎭',
-    'Family': '👨‍👩‍👧‍👦',
-    'Fantasy': '🧙',
-    'History': '📜',
-    'Horror': '👻',
-    'Music': '🎵',
-    'Mystery': '🔍',
-    'Romance': '❤️',
-    'Sci-Fi': '🚀',
-    'Thriller': '😱',
-    'War': '⚔️',
-    'Western': '🤠',
+const getGenreImage = (genreName: string): ImageSourcePropType => {
+  const imageMap: { [key: string]: ImageSourcePropType } = {
+    'Action': require('../../assets/genres/action.png'),
+    'Adventure': require('../../assets/genres/adventure.png'),
+    'Animation': require('../../assets/genres/animation.png'),
+    'Comedy': require('../../assets/genres/comedy.png'),
+    'Crime': require('../../assets/genres/crime.png'),
+    'Documentary': require('../../assets/genres/documentary.png'),
+    'Drama': require('../../assets/genres/drama.png'),
+    'Family': require('../../assets/genres/family.png'),
+    'Fantasy': require('../../assets/genres/fantasy.png'),
+    'History': require('../../assets/genres/history.png'),
+    'Horror': require('../../assets/genres/horror.png'),
+    'Music': require('../../assets/genres/music.png'),
+    'Mystery': require('../../assets/genres/mystery.png'),
+    'News' : require('../../assets/genres/news.png'),
+    'Romance': require('../../assets/genres/romance.png'),
+    'Reality': require('../../assets/genres/reality.png'),
+    'Science Fiction': require('../../assets/genres/scifi.png'),
+    'Talk Show': require('../../assets/genres/talk_show.png'),
+    'Thriller': require('../../assets/genres/thriller.png'),
+    'War': require('../../assets/genres/war.png'),
+    'Western': require('../../assets/genres/western.png'),
   };
 
-  return emojiMap[genreName] || '🎬';
+  return imageMap[genreName];
 };
