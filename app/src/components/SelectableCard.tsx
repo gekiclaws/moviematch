@@ -1,5 +1,6 @@
 // src/components/SelectableCard.tsx
 import React from 'react';
+import { ImageSourcePropType } from 'react-native';
 import { TouchableOpacity, Text, View, StyleSheet, Image } from 'react-native';
 
 interface SelectableCardProps {
@@ -7,6 +8,7 @@ interface SelectableCardProps {
   label: string;
   emoji?: string;
   imageUrl?: string;
+  image?: ImageSourcePropType;
   isSelected: boolean;
   onPress: (id: string) => void;
 }
@@ -16,6 +18,7 @@ export default function SelectableCard({
   label,
   emoji,
   imageUrl,
+  image,
   isSelected,
   onPress,
 }: SelectableCardProps) {
@@ -29,8 +32,10 @@ export default function SelectableCard({
       activeOpacity={0.7}
     >
       <View style={styles.iconContainer}>
-        {imageUrl ? (
-          <Image source={{ uri: imageUrl }} style={styles.image} />
+        {image ? (
+          <Image source={image} style={styles.image} resizeMode="contain" />
+        ) : imageUrl ? (
+          <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="contain" />
         ) : (
           <Text style={styles.emoji}>{emoji || '🎬'}</Text>
         )}
