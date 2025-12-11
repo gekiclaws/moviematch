@@ -130,6 +130,7 @@ describe('MovieApi', () => {
           selectedTypes: ['movie'],
           selectedGenres: ['action'],
           selectedPlatforms: ['netflix', 'prime'],
+          favoriteMedia: [],
         },
         'us'
       );
@@ -159,6 +160,7 @@ describe('MovieApi', () => {
           selectedTypes: [],
           selectedGenres: [],
           selectedPlatforms: [],
+          favoriteMedia: [],
         },
         'us'
       );
@@ -181,6 +183,7 @@ describe('MovieApi', () => {
           selectedTypes: ['movie'],
           selectedGenres: ['action', 'comedy'],
           selectedPlatforms: ['netflix'],
+          favoriteMedia: [],
         },
         'us',
         {
@@ -226,6 +229,7 @@ describe('MovieApi', () => {
           selectedTypes: ['movie'],
           selectedGenres: [],
           selectedPlatforms: [],
+          favoriteMedia: [],
         },
         'us',
         { limit: 5 }
@@ -248,6 +252,7 @@ describe('MovieApi', () => {
           selectedTypes: ['movie'],
           selectedGenres: ['action'],
           selectedPlatforms: [],
+          favoriteMedia: [],
         },
         'us'
       );
@@ -264,6 +269,7 @@ describe('MovieApi', () => {
           selectedTypes: ['movie'],
           selectedGenres: [],
           selectedPlatforms: [],
+          favoriteMedia: [],
         })
       ).rejects.toThrow('Failed to fetch movies');
     });

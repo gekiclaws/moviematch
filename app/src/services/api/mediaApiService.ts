@@ -1,5 +1,7 @@
 import * as streamingAvailability from "streaming-availability";
+import type { Genre } from "../../types/genre";
 import type { Media } from "../../types/media";
+import type { PreferenceQueryOptions, UserPreferences } from "../movies/MovieProvider";
 import { MOVIE_API_KEY } from "@env";
 
 const RAPID_API_HOST = 'streaming-availability.p.rapidapi.com';
@@ -58,20 +60,9 @@ const transformShowToMedia = (show: any): Media => {
  * @param options - Additional filtering options
  */
 export const getMoviesByPreferences = async (
-  preferences: {
-    selectedTypes: ('movie' | 'show')[]; 
-    selectedGenres: string[];
-    selectedPlatforms: string[];
-  },
+  preferences: UserPreferences,
   country: string = 'us',
-  options?: {
-    minRating?: number;
-    yearMin?: number;
-    yearMax?: number;
-    keyword?: string;
-    orderBy?: 'original_title' | 'popularity_1year' | 'popularity_1month' | 'popularity_1week' | 'popularity_alltime';
-    limit?: number;
-  }
+  options?: PreferenceQueryOptions
 ): Promise<Media[]> => {
   try {
     const client = createClient();
@@ -83,7 +74,9 @@ export const getMoviesByPreferences = async (
     // Build the request parameters
     const params: any = {
       country: country,
-      showType: 'movie', // Only fetch movies, not series
+      showType: preferences.selectedTypes?.includes('show') && !preferences.selectedTypes.includes('movie')
+        ? 'show'
+        : 'movie',
     };
 
     /* TODO
@@ -103,15 +96,15 @@ export const getMoviesByPreferences = async (
     }
 
     // Add optional filters
-    if (options?.minRating) {
+    if (options?.minRating !== undefined) {
       params.ratingMin = options.minRating;
     }
 
-    if (options?.yearMin) {
+    if (options?.yearMin !== undefined) {
       params.yearMin = options.yearMin;
     }
 
-    if (options?.yearMax) {
+    if (options?.yearMax !== undefined) {
       params.yearMax = options.yearMax;
     }
 
@@ -129,9 +122,11 @@ export const getMoviesByPreferences = async (
     // Transform the results to our Media interface
     const movies = response.shows.map(transformShowToMedia);
     
-    // Apply limit if specified
+    // Apply pagination if specified
     if (options?.limit) {
-      return movies.slice(0, options.limit);
+      const pageNumber = options.page && options.page > 0 ? options.page : 1;
+      const start = (pageNumber - 1) * options.limit;
+      return movies.slice(start, start + options.limit);
     }
     
     return movies;
@@ -224,7 +219,7 @@ export const getPopularMovies = async (
  * Gets list of available genres
  * Useful for onboarding genre selection screen
  */
-export const getAvailableGenres = async (): Promise<Array<{ id: string; name: string }>> => {
+export const getAvailableGenres = async (): Promise<Genre[]> => {
   try {
     const client = createClient();
     
