@@ -1,5 +1,8 @@
 # moviematch
 
+## Ideation Choices
+To get a better understanding of why we created this app and some context as to how this app came about, check out: [Ideation Choices](IDEATION_CHOICES.md)
+
 ## Env setup
 
 In the `app` folder, copy `.env.sample`, rename it to `.env`, then insert your `MOVIE_API_KEY`.
