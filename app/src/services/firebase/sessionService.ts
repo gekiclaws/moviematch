@@ -285,7 +285,11 @@ export const SessionService = {
     await this.update(sessionId, { sessionStatus: 'in progress', playerStatus });
   },
 
-  async markPlayerFinished(sessionId: string, userId: string): Promise<void> {
+  async markPlayerFinished(
+    sessionId: string,
+    userId: string,
+    expectedSwipeCount?: number
+  ): Promise<void> {
     const sessionRef = doc(db, 'sessions', sessionId);
 
     await runTransaction(db, async (transaction) => {
@@ -297,6 +301,7 @@ export const SessionService = {
 
       const session = snapshot.data() as Omit<Session, 'id'> & {
         playerStatus?: Record<string, PlayerReadiness>;
+        expectedSwipeCounts?: Record<string, number>;
       };
 
       if (!Array.isArray(session.userIds) || !session.userIds.includes(userId)) {
@@ -308,6 +313,7 @@ export const SessionService = {
         (Object.fromEntries(
           session.userIds.map((id) => [id, 'awaiting' as PlayerReadiness])
         ) as Record<string, PlayerReadiness>);
+      const existingExpectedCounts = session.expectedSwipeCounts ?? {};
 
       if (existingPlayerStatus[userId] === 'done') {
         return;
@@ -322,13 +328,33 @@ export const SessionService = {
         [`playerStatus.${userId}`]: 'done',
       };
 
+      const shouldStoreExpected =
+        typeof expectedSwipeCount === 'number' && expectedSwipeCount >= 0;
+      const updatedExpectedCounts: Record<string, number> = {
+        ...existingExpectedCounts,
+        ...(shouldStoreExpected ? { [userId]: expectedSwipeCount } : {}),
+      };
+      if (shouldStoreExpected) {
+        updates[`expectedSwipeCounts.${userId}`] = expectedSwipeCount;
+      }
+
       const allPlayersDone = session.userIds.every(
         (id) => updatedPlayerStatus[id] === 'done'
       );
 
-      if (allPlayersDone) {
-        const swipes = Array.isArray(session.swipes) ? session.swipes : [];
+      const swipes = Array.isArray(session.swipes) ? session.swipes : [];
+      const swipeCounts: Record<string, number> = session.userIds.reduce((acc, id) => {
+        acc[id] = swipes.filter((s) => s.userId === id).length;
+        return acc;
+      }, {} as Record<string, number>);
 
+      const allSwipeCountsSatisfied = session.userIds.every((id) => {
+        const expected = updatedExpectedCounts[id];
+        if (expected === undefined) return false;
+        return swipeCounts[id] >= expected;
+      });
+
+      if (allPlayersDone && allSwipeCountsSatisfied) {
         const { matchedTitles, algorithmVersion, certainty } =
           MatchingService.matchSession(swipes, session.userIds);
 

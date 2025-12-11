@@ -862,9 +862,15 @@ describe('SessionService', () => {
         data: () => sess,
       });
 
-      await SessionService.markPlayerFinished('session-id', 'u1');
+      await SessionService.markPlayerFinished('session-id', 'u1', 3);
 
-      expect(transactionUpdateMock).toHaveBeenCalled();
+      expect(transactionUpdateMock).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          'playerStatus.u1': 'done',
+          'expectedSwipeCounts.u1': 3,
+        })
+      );
     });
 
     it('completes session when both done', async () => {
@@ -872,6 +878,7 @@ describe('SessionService', () => {
         ...baseSession,
         userIds: ['u1', 'u2'],
         playerStatus: { u1: 'done', u2: 'awaiting' },
+        expectedSwipeCounts: { u1: 1 },
         swipes: [
           { id: '1', userId: 'u1', mediaId: 'm1', mediaTitle: 'Movie1', decision: 'like', createdAt: 1 },
           { id: '2', userId: 'u2', mediaId: 'm1', mediaTitle: 'Movie1', decision: 'like', createdAt: 2 },
@@ -883,7 +890,7 @@ describe('SessionService', () => {
         data: () => sess,
       });
 
-      await SessionService.markPlayerFinished('session-id', 'u2');
+      await SessionService.markPlayerFinished('session-id', 'u2', 1);
 
       expect(transactionUpdateMock).toHaveBeenCalled();
       const [, payload] = transactionUpdateMock.mock.calls[0];
