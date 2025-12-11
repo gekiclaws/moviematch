@@ -359,7 +359,8 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
   if (currentIndex >= movies.length) {
     if (!hasMarkedFinishedRef.current) {
       hasMarkedFinishedRef.current = true;
-      SessionService.markPlayerFinished(sessionId, userId).catch((err) => {
+      const expectedSwipeCount = Math.max(currentIndex, movies.length);
+      SessionService.markPlayerFinished(sessionId, userId, expectedSwipeCount).catch((err) => {
         console.error('Failed to mark player finished:', err);
       });
     }

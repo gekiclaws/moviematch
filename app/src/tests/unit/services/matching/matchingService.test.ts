@@ -219,4 +219,51 @@ describe('MatchingService.matchSession (with DI)', () => {
     expect(result.certainty).toBe(0.5);
     expect(result.matchedTitles.length).toBeGreaterThan(0);
   });
+
+  // ------------------------------
+  // 7. Seeded fallback includes metadata
+  // ------------------------------
+  it('uses seeded fallback with full metadata when no positive signal', () => {
+    const service = createMatchingService({
+      buildUserPreferenceVector: () => ({ vector: [0, 0, 0], magnitude: 0, isZero: true }),
+      buildConsensusVector: () => ({ vector: [0, 0, 0], magnitude: 0, isZero: true }),
+      rankCandidates: fakeRank,
+    });
+
+    const swipes = [
+      makeSwipe({
+        id: 's1',
+        userId: 'u1',
+        mediaId: 'm1',
+        mediaTitle: 'Title 1',
+        decision: 'dislike',
+        posterUrl: 'p1.jpg',
+      }),
+      makeSwipe({
+        id: 's2',
+        userId: 'u2',
+        mediaId: 'm2',
+        mediaTitle: 'Title 2',
+        decision: 'dislike',
+        posterUrl: 'p2.jpg',
+      }),
+      makeSwipe({
+        id: 's3',
+        userId: 'u1',
+        mediaId: 'm3',
+        mediaTitle: 'Title 3',
+        decision: 'dislike',
+        posterUrl: 'p3.jpg',
+      }),
+    ];
+
+    const first = service.matchSession(swipes, ['u1', 'u2'], 'session-seed');
+    const second = service.matchSession(swipes, ['u1', 'u2'], 'session-seed');
+
+    expect(first.fallback).toBe(true);
+    expect(first.matchedTitles.length).toBe(3);
+    expect(first.matchedTitles).toEqual(second.matchedTitles);
+    expect(first.matchedTitles.every((t) => t.title !== t.id)).toBe(true);
+    expect(first.matchedTitles.every((t) => t.posterUrl)).toBe(true);
+  });
 });

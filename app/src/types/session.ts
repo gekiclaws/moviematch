@@ -27,4 +27,5 @@ export interface Session {
   createdAt: number;
   sessionStatus: SessionStatus;
   playerStatus: Record<string, PlayerReadiness>;
+  expectedSwipeCounts?: Record<string, number>;
 }
