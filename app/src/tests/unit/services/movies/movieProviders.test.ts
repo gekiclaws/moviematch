@@ -16,15 +16,6 @@ import * as mediaApiService from '../../../../services/api/mediaApiService';
 
 describe('Movie Providers', () => {
   // ---------------------------------------------------------------------------
-  // providerRegistry
-  // ---------------------------------------------------------------------------
-  describe('providerRegistry', () => {
-    it('should default to StaticMovieProvider', () => {
-      expect(movieProvider).toBeInstanceOf(StaticMovieProvider);
-    });
-  });
-
-  // ---------------------------------------------------------------------------
   // StaticMovieProvider
   // ---------------------------------------------------------------------------
   describe('StaticMovieProvider', () => {

@@ -1,5 +1,5 @@
 import { StaticMovieProvider } from './StaticMovieProvider';
-// import { RapidApiMovieProvider } from './RapidApiMovieProvider';
+import { RapidApiMovieProvider } from './RapidApiMovieProvider';
 
 export const movieProvider = new StaticMovieProvider();
 
