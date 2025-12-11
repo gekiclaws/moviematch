@@ -1,7 +1,6 @@
+import type { MovieProvider } from './MovieProvider';
 import { StaticMovieProvider } from './StaticMovieProvider';
 import { RapidApiMovieProvider } from './RapidApiMovieProvider';
 
-export const movieProvider = new StaticMovieProvider();
-
-// To switch to RapidAPI, change to:
-// export const movieProvider = new RapidApiMovieProvider();
+// export const movieProvider: MovieProvider = new StaticMovieProvider();
+export const movieProvider: MovieProvider = new RapidApiMovieProvider();

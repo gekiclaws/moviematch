@@ -9,13 +9,13 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getAvailableGenres } from '../services/api/mediaApiService';
 import type { Genre } from '../types/genre';
 import SelectableCard from "../components/SelectableCard";
 import { UserService } from '../services/firebase/userService';
 import { UserManager } from '../services/firebase/userManager';
 import { styles } from '../styles/GenreSelectionStyles';
 import { ImageSourcePropType } from 'react-native';
+import { movieProvider } from '../services/movies/providerRegistry';
 
 type Props = {
   route: {
@@ -57,7 +57,7 @@ export default function GenreSelectionScreen({ route, navigation }: Props) {
         }
 
         // Load genre list
-        const fetchedGenres = await getAvailableGenres();
+        const fetchedGenres = await movieProvider.getAvailableGenres();
         setGenres(fetchedGenres);
 
       } catch (err: any) {
@@ -83,7 +83,7 @@ export default function GenreSelectionScreen({ route, navigation }: Props) {
     const loadGenres = useCallback(async () => {
       try {
         setLoading(true);
-        const fetchedGenres = await getAvailableGenres();
+        const fetchedGenres = await movieProvider.getAvailableGenres();
         setGenres(fetchedGenres);
       } catch (err: any) {
         console.error('Error loading genres:', err);
