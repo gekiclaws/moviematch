@@ -189,6 +189,7 @@ export default function MovieSwipeScreen({ route, navigation }: Props) {
           selectedTypes: typesToFetch,
           selectedGenres: [],
           selectedPlatforms: [],
+          favoriteMedia: userData.preferences.favoriteMedia || [],
         },
         'us',
         { limit: 10, orderBy: 'popularity_1year' }

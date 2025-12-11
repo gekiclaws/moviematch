@@ -12,11 +12,11 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { searchMoviesByTitle, getPopularMovies } from '../services/api/mediaApiService';
 import { UserService } from '../services/firebase/userService';
 import { UserManager } from '../services/firebase/userManager';
 import type { Media } from '../types/media';
 import { styles } from "../styles/FavoriteMediaStyles";
+import { movieProvider } from '../services/movies/providerRegistry';
 
 type Props = {
   route: {
@@ -81,7 +81,7 @@ const filterValidMedia = (data: Media[]) => {
 const loadPopularMovies = async () => {
   try {
     setSearching(true);
-    const popular = await getPopularMovies('netflix', 'us');
+    const popular = await movieProvider.getPopularMovies({ service: 'netflix', country: 'us' });
 
     const cleaned = filterValidMedia(popular);
 
@@ -102,7 +102,7 @@ const handleSearch = async () => {
 
   try {
     setSearching(true);
-    const results = await searchMoviesByTitle(searchQuery, 'us');
+    const results = await movieProvider.searchMoviesByTitle(searchQuery, 'us');
 
     const cleaned = filterValidMedia(results);
 

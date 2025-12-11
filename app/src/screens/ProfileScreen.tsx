@@ -5,7 +5,7 @@ import UserService from "../services/firebase/userService";
 import FooterNav from "../components/FooterNav";
 import { styles } from "../styles/ProfileScreenStyles"; // adjust path as needed
 import { Media } from "../types/media";
-import { getMovieById } from "../services/api/mediaApiService";
+import { movieProvider } from "../services/movies/providerRegistry";
 
 export default function ProfileScreen({ navigation }: any) {
   const [user, setUser] = useState<any>(null);
@@ -33,7 +33,7 @@ export default function ProfileScreen({ navigation }: any) {
 
       try {
         const mediaObjects: Media[] = await Promise.all(
-          user.preferences.favoriteMedia.map((id: string) => getMovieById(id))
+          user.preferences.favoriteMedia.map((id: string) => movieProvider.getMovieById(id))
         );
         setFavoriteMedia(mediaObjects);
       } catch (error) {
