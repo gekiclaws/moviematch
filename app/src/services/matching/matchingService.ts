@@ -63,7 +63,9 @@ export function createMatchingService(deps: {
     similarityScore?: number,
     certainty?: number
   ): MatchedTitle => {
-    const swipe = swipes.find((s) => s.mediaId === mediaId && s.decision === 'like');
+    const swipe =
+      swipes.find((s) => s.mediaId === mediaId && s.decision === 'like') ??
+      swipes.find((s) => s.mediaId === mediaId);
 
     const title: MatchedTitle = {
       id: mediaId,
@@ -78,16 +80,36 @@ export function createMatchingService(deps: {
     return title;
   };
 
-  const shuffle = <T>(items: T[]): T[] => {
+  const createSeededRandom = (seed: string): (() => number) => {
+    let h = 1779033703 ^ seed.length;
+
+    for (let i = 0; i < seed.length; i++) {
+      h = Math.imul(h ^ seed.charCodeAt(i), 3432918353);
+      h = (h << 13) | (h >>> 19);
+    }
+
+    return () => {
+      h = Math.imul(h ^ (h >>> 16), 2246822507);
+      h = Math.imul(h ^ (h >>> 13), 3266489909);
+      h ^= h >>> 16;
+      return (h >>> 0) / 4294967296;
+    };
+  };
+
+  const shuffle = <T>(items: T[], rng: () => number = Math.random): T[] => {
     const arr = [...items];
     for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(rng() * (i + 1));
       [arr[i], arr[j]] = [arr[j], arr[i]];
     }
     return arr;
   };
 
-  const getRandomFallbackMatches = (swipes: Swipe[], count: number): MatchedTitle[] => {
+  const getRandomFallbackMatches = (
+    swipes: Swipe[],
+    count: number,
+    seed?: string
+  ): MatchedTitle[] => {
     const uniq = new Map<string, Swipe>();
     for (const s of swipes) {
       if (!uniq.has(s.mediaId)) uniq.set(s.mediaId, s);
@@ -95,7 +117,9 @@ export function createMatchingService(deps: {
     const candidates = [...uniq.values()];
     if (candidates.length === 0) return [];
 
-    return shuffle(candidates)
+    const rng = seed ? createSeededRandom(seed) : Math.random;
+
+    return shuffle(candidates, rng)
       .slice(0, count)
       .map((s) => buildMatchedTitle(s.mediaId, swipes));
   };
@@ -103,14 +127,18 @@ export function createMatchingService(deps: {
   //
   // -------------------------- Core Matching Logic --------------------------
   //
-  const computeMatchesInternal = (swipes: Swipe[], userIds: string[]): MatchSessionResult => {
+  const computeMatchesInternal = (
+    swipes: Swipe[],
+    userIds: string[],
+    seed?: string
+  ): MatchSessionResult => {
     const userVectors = userIds.map((id) => buildUserPreferenceVector(swipes, id));
     const consensusVector = buildConsensusVector(userVectors);
     const candidateIds = [...selectCandidateIds(swipes, userIds)];
 
     if (candidateIds.length === 0 || consensusVector.isZero) {
       return {
-        matchedTitles: getRandomFallbackMatches(swipes, MAX_RESULTS),
+        matchedTitles: getRandomFallbackMatches(swipes, MAX_RESULTS, seed),
         algorithmVersion: MATCHING_ALGORITHM_VERSION,
         certainty: 0.5,
         fallback: true,
@@ -124,9 +152,9 @@ export function createMatchingService(deps: {
       MAX_RESULTS
     );
 
-    if (!stats || sessionCertainty === null) {
+    if (!stats || sessionCertainty === null || ranked.length === 0) {
       return {
-        matchedTitles: getRandomFallbackMatches(swipes, MAX_RESULTS),
+        matchedTitles: getRandomFallbackMatches(swipes, MAX_RESULTS, seed),
         algorithmVersion: MATCHING_ALGORITHM_VERSION,
         certainty: 0.5,
         fallback: true,
@@ -147,12 +175,12 @@ export function createMatchingService(deps: {
   // --------------------------- Public API ---------------------------
   //
   return {
-    matchSession(swipes: Swipe[], userIds: string[]): MatchSessionResult {
+    matchSession(swipes: Swipe[], userIds: string[], sessionId?: string): MatchSessionResult {
       try {
-        return computeMatchesInternal(swipes ?? [], userIds);
+        return computeMatchesInternal(swipes ?? [], userIds, sessionId);
       } catch (err) {
         return {
-          matchedTitles: getRandomFallbackMatches(swipes ?? [], MAX_RESULTS),
+          matchedTitles: getRandomFallbackMatches(swipes ?? [], MAX_RESULTS, sessionId),
           algorithmVersion: MATCHING_ALGORITHM_VERSION,
           certainty: 0.5,
           fallback: true,

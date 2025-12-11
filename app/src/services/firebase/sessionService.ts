@@ -356,7 +356,7 @@ export const SessionService = {
 
       if (allPlayersDone && allSwipeCountsSatisfied) {
         const { matchedTitles, algorithmVersion, certainty } =
-          MatchingService.matchSession(swipes, session.userIds);
+          MatchingService.matchSession(swipes, session.userIds, sessionId);
 
         updates.sessionStatus = 'complete';
         updates.matchedTitles = matchedTitles;
